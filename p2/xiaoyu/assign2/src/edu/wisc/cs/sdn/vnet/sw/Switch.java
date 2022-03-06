@@ -50,8 +50,13 @@ public class Switch extends Device
 //		Ethernet cEther = new Ethernet();
 		MACAddress destination = etherPacket.getDestinationMAC();
 		MACAddress source = etherPacket.getSourceMAC();
+		SwitchPort srcPort = new SwitchPort(inIface, System.currentTimeMillis());
+		switchTable.put(source, srcPort);
 		boolean update = true;
 		if (switchTable.containsKey(destination)){
+			if (switchTable.get(destination).iface == inIface){
+				update = false;
+			}
 			if(System.currentTimeMillis() - switchTable.get(destination).startTime < 15000){
 				sendPacket(etherPacket, switchTable.get(destination).iface);
 				update = false;
@@ -67,8 +72,8 @@ public class Switch extends Device
 				if (potential_inf != inIface) {
 					boolean success = sendPacket(etherPacket, potential_inf);
 					if (success == true) {
-						SwitchPort srcPort = new SwitchPort(potential_inf, System.currentTimeMillis());
-						switchTable.put(destination, srcPort);
+						SwitchPort desPort = new SwitchPort(potential_inf, System.currentTimeMillis());
+						switchTable.put(destination, desPort);
 						break;
 					}
 				}
