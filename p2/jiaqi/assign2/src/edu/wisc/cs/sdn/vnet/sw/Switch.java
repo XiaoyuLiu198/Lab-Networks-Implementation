@@ -48,7 +48,8 @@ public class Switch extends Device {
     /********************************************************************/
     /* Handle packets */
     SwitchPort srcPort = new SwitchPort(inIface, System.currentTimeMillis());
-    switchingTable.put(etherPacket.getSourceMAC(), srcPort);
+    MACAddress srcMAC = etherPacket.getSourceMAC();
+    switchingTable.put(srcMAC, srcPort);
 
     MACAddress destMAC = etherPacket.getDestinationMAC();
     SwitchPort destPort = switchingTable.get(destMAC);
@@ -63,9 +64,7 @@ public class Switch extends Device {
       // broadcast
       for (Iface iface : interfaces.values()) {
         if (!iface.equals(inIface)) {
-          if (sendPacket(etherPacket, iface)) {
-            switchingTable.put(destMAC, destPort);
-          }
+          sendPacket(etherPacket, iface);
         }
       }
     } else {
