@@ -50,11 +50,13 @@ public class Switch extends Device
 		/* Handle packets                                                   */
     SwitchPort srcPort = new SwitchPort(inIface, System.currentTimeMillis());
     switchingTable.put(etherPacket.getSourceMAC(), srcPort);
-		SwitchPort destPort = switchingTable.get(etherPacket.getDestinationMAC());
+
+    MACAddress destMAC = etherPacket.getDestinationMAC();
+		SwitchPort destPort = switchingTable.get(destMAC);
 
     if (System.currentTimeMillis() - destPort.startTime > 15000) {
       // timeout after 15 seconds. Not sure if this is correct?
-      switchingTable.remove(etherPacket.getDestinationMAC());
+      switchingTable.remove(destMAC);
       destPort = null;
     }
 
@@ -62,7 +64,9 @@ public class Switch extends Device
       // broadcast
       for (Iface iface : interfaces.values()) {
         if (!iface.equals(inIface)) {
-          sendPacket(etherPacket, iface);
+          if (sendPacket(etherPacket, iface)) {
+            switchingTable.put(destMAC, destPort);
+          }
         }
       }
     } else {
