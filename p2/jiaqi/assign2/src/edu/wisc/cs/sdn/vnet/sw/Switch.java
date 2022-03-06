@@ -54,11 +54,11 @@ public class Switch extends Device {
     MACAddress destMAC = etherPacket.getDestinationMAC();
     SwitchPort destPort = switchingTable.get(destMAC);
 
-    if (destPort != null && (System.currentTimeMillis() - destPort.startTime > 15000)) {
-      // timeout after 15 seconds. Not sure if this is correct?
-      switchingTable.remove(destMAC);
-      destPort = null;
-    }
+    // if (destPort != null && (System.currentTimeMillis() - destPort.startTime > 15000)) {
+    //   // timeout after 15 seconds. Not sure if this is correct?
+    //   switchingTable.remove(destMAC);
+    //   destPort = null;
+    // }
 
     if (destPort == null) {
       // broadcast
