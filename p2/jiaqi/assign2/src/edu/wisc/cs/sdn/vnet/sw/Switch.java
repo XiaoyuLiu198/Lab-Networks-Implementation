@@ -69,7 +69,7 @@ public class Switch extends Device {
       }
     } else {
       // unicast
-      if (inIface.equals(destPort.iface)) {
+      if (!inIface.equals(destPort.iface)) {
         sendPacket(etherPacket, destPort.iface);
       }
     }
