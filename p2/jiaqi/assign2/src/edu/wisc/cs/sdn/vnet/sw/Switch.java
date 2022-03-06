@@ -12,19 +12,18 @@ import java.util.HashMap;
 /**
  * @author Aaron Gember-Jacobson
  */
-public class Switch extends Device
-{	
-  
+public class Switch extends Device {
+
   private Map<MACAddress, SwitchPort> switchingTable = new HashMap<>();
 
-	/**
-	 * Creates a router for a specific host.
-	 * @param host hostname for the router
-	 */
-	public Switch(String host, DumpFile logfile)
-	{
-		super(host,logfile);
-	}
+  /**
+   * Creates a router for a specific host.
+   * 
+   * @param host hostname for the router
+   */
+  public Switch(String host, DumpFile logfile) {
+    super(host, logfile);
+  }
 
   protected class SwitchPort {
     protected Iface iface;
@@ -36,23 +35,23 @@ public class Switch extends Device
     }
   }
 
-	/**
-	 * Handle an Ethernet packet received on a specific interface.
-	 * @param etherPacket the Ethernet packet that was received
-	 * @param inIface the interface on which the packet was received
-	 */
-	public void handlePacket(Ethernet etherPacket, Iface inIface)
-	{
-		System.out.println("*** -> Received packet: " +
-				etherPacket.toString().replace("\n", "\n\t"));
-		
-		/********************************************************************/
-		/* Handle packets                                                   */
+  /**
+   * Handle an Ethernet packet received on a specific interface.
+   * 
+   * @param etherPacket the Ethernet packet that was received
+   * @param inIface     the interface on which the packet was received
+   */
+  public void handlePacket(Ethernet etherPacket, Iface inIface) {
+    System.out.println("*** -> Received packet: " +
+        etherPacket.toString().replace("\n", "\n\t"));
+
+    /********************************************************************/
+    /* Handle packets */
     SwitchPort srcPort = new SwitchPort(inIface, System.currentTimeMillis());
     switchingTable.put(etherPacket.getSourceMAC(), srcPort);
 
     MACAddress destMAC = etherPacket.getDestinationMAC();
-		SwitchPort destPort = switchingTable.get(destMAC);
+    SwitchPort destPort = switchingTable.get(destMAC);
 
     if (System.currentTimeMillis() - destPort.startTime > 15000) {
       // timeout after 15 seconds. Not sure if this is correct?
@@ -74,6 +73,6 @@ public class Switch extends Device
       sendPacket(etherPacket, destPort.iface);
     }
 
-		/********************************************************************/
-	}
+    /********************************************************************/
+  }
 }
