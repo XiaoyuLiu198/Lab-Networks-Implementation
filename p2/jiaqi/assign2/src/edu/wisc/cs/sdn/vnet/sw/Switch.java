@@ -63,13 +63,15 @@ public class Switch extends Device {
     if (destPort == null) {
       // broadcast
       for (Iface iface : interfaces.values()) {
-        if (!iface.equals(inIface)) {
+        if (!inIface.equals(iface)) {
           sendPacket(etherPacket, iface);
         }
       }
     } else {
       // unicast
-      sendPacket(etherPacket, destPort.iface);
+      if (inIface.equals(destPort.iface)) {
+        sendPacket(etherPacket, destPort.iface);
+      }
     }
 
     /********************************************************************/
