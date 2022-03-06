@@ -72,8 +72,8 @@ public class Switch extends Device
 				if (potential_inf != inIface) {
 					boolean success = sendPacket(etherPacket, potential_inf);
 					if (success == true) {
-						SwitchPort desPort = new SwitchPort(potential_inf, System.currentTimeMillis());
-						switchTable.put(destination, desPort);
+//						SwitchPort desPort = new SwitchPort(potential_inf, System.currentTimeMillis());
+//						switchTable.put(destination, desPort);
 						break;
 					}
 				}
