@@ -64,6 +64,8 @@ public class RouteTable {
           }
         }
       }
+      
+      System.out.println("lookup() inside RouteTable: matchingEntry: " + matchingEntry.toString());
       return matchingEntry;
 
       /*****************************************************************/

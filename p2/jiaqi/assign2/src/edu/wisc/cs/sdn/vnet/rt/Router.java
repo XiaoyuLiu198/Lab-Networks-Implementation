@@ -84,35 +84,41 @@ public class Router extends Device {
 
     /********************************************************************/
     /* Handle packets */
-
+    System.out.println("***1");
     if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) return;  // drop packet if not IPv4
 
     IPv4 packet = (IPv4) etherPacket.getPayload();
     short checksum = packet.getChecksum();
 
+    System.out.println("***2");
     // packet.setChecksum((short) 0);
     packet.resetChecksum();
     byte[] data = packet.serialize();
     packet = (IPv4) packet.deserialize(data, 0, data.length);
     if (checksum != packet.getChecksum()) return;  // drop packet if checksum incorrect
 
+    System.out.println("***3");
     packet.setTtl((byte) (packet.getTtl() - 1));
     if (packet.getTtl() > (byte) 0) return;  // drop packet if decremented TTL is 0
 
+    System.out.println("***4");
     data = packet.serialize();
     packet = (IPv4) packet.deserialize(data, 0, data.length);
     etherPacket.setPayload(packet);
 
+    System.out.println("***5");
     for (Iface iface : interfaces.values()) {
       if (iface.getIpAddress() == packet.getDestinationAddress()) return;  // drop packet if dest IP address matches one of the interfaces'
     }
 
     // Forwarding packet
 
+    System.out.println("***6");
     int nextHopIpAddress = packet.getDestinationAddress();
     RouteEntry resultEntry = routeTable.lookup(nextHopIpAddress);
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
 
+    System.out.println("***9");
     ArpEntry arpEntry = arpCache.lookup(nextHopIpAddress);
     if (arpEntry == null) return;  // drop packet if no entry in ARP table
 
@@ -122,8 +128,9 @@ public class Router extends Device {
     etherPacket.setSourceMACAddress(sourceMACAddress.toBytes());
     etherPacket.setDestinationMACAddress(nextHopMACAddress.toBytes());
 
+    System.out.println("***7");
     sendPacket(etherPacket, resultEntry.getInterface());
-
+    System.out.println("***8");
     /********************************************************************/
   }
 }
