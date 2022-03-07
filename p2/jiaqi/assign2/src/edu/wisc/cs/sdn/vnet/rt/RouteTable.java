@@ -28,34 +28,6 @@ public class RouteTable
 	public RouteTable()
 	{ this.entries = new LinkedList<RouteEntry>(); }
 	
-  // public RouteEntry lookup(int ip) {
-	// 	synchronized (this.entries) {
-	// 		int maxPrefixLen = -1;
-	// 		RouteEntry routeEntry = null;
-	// 		for (RouteEntry entry : this.entries) {
-	// 			int networkAddress = ip & entry.getMaskAddress();
-	// 			if (entry.getDestinationAddress() == networkAddress) {
-	// 				int prefixLen = getPrefixLen(entry.getMaskAddress());
-	// 				if (prefixLen > maxPrefixLen) {
-	// 					maxPrefixLen = prefixLen;
-	// 					routeEntry = entry;
-	// 				}
-	// 			}
-	// 		}
-	// 		return routeEntry;
-	// 	}
-	// }
-
-  // private int getPrefixLen(int address) {
-	// 	int numZeroes = 32;
-	// 	while ((address & 1) == 0 && numZeroes > 0) {
-	// 		address = address >>> 1;
-	// 		numZeroes--;
-	// 	}
-	// 	return numZeroes;
-	// }
-
-
   private int getPrefixLength(int ip) {
     // int zeroes = Integer.numberOfTrailingZeros(ip);
     // return (32 - zeroes);
@@ -83,7 +55,7 @@ public class RouteTable
       RouteEntry matchingEntry = null;
       for (RouteEntry entry : this.entries) {
         int maskedAddress = entry.getMaskAddress() & ip;
-        int destAddress = entry.getDestinationAddress();
+        int destAddress = entry.getGatewayAddress();
         if (destAddress == maskedAddress) {
           int prefix = getPrefixLength(destAddress);
           if (prefix > longestPrefix) {
