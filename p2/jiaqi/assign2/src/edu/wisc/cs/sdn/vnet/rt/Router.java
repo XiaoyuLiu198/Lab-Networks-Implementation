@@ -84,9 +84,10 @@ public class Router extends Device {
 
     /********************************************************************/
     /* Handle packets */
-    System.out.println("***1");
-    System.out.println(etherPacket.getEtherType());
-    System.out.println(Ethernet.TYPE_IPv4);
+    
+    // System.out.println("***1");
+    // System.out.println(etherPacket.getEtherType());
+    // System.out.println(Ethernet.TYPE_IPv4);
 
     if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) return;  // drop packet if not IPv4
     
@@ -94,7 +95,7 @@ public class Router extends Device {
     IPv4 packet = (IPv4) etherPacket.getPayload();
     short checksum = packet.getChecksum();
 
-    System.out.println("***2");
+    // System.out.println("***2");
     // packet.setChecksum((short) 0);
     packet.resetChecksum();
     byte[] data = packet.serialize();
@@ -103,7 +104,7 @@ public class Router extends Device {
 
     System.out.println("***3");
     packet.setTtl((byte) (packet.getTtl() - 1));
-    if (packet.getTtl() > (byte) 0) return;  // drop packet if decremented TTL is 0
+    if (packet.getTtl() <= (byte) 0) return;  // drop packet if decremented TTL is 0
 
     System.out.println("***4");
     data = packet.serialize();
