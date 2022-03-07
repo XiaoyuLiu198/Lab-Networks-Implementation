@@ -28,6 +28,46 @@ public class RouteTable
 	public RouteTable()
 	{ this.entries = new LinkedList<RouteEntry>(); }
 	
+  // public RouteEntry lookup(int ip) {
+	// 	synchronized (this.entries) {
+	// 		int maxPrefixLen = -1;
+	// 		RouteEntry routeEntry = null;
+	// 		for (RouteEntry entry : this.entries) {
+	// 			int networkAddress = ip & entry.getMaskAddress();
+	// 			if (entry.getDestinationAddress() == networkAddress) {
+	// 				int prefixLen = getPrefixLen(entry.getMaskAddress());
+	// 				if (prefixLen > maxPrefixLen) {
+	// 					maxPrefixLen = prefixLen;
+	// 					routeEntry = entry;
+	// 				}
+	// 			}
+	// 		}
+	// 		return routeEntry;
+	// 	}
+	// }
+
+  // private int getPrefixLen(int address) {
+	// 	int numZeroes = 32;
+	// 	while ((address & 1) == 0 && numZeroes > 0) {
+	// 		address = address >>> 1;
+	// 		numZeroes--;
+	// 	}
+	// 	return numZeroes;
+	// }
+
+
+  private int getPrefixLength(int ip) {
+    // int zeroes = Integer.numberOfTrailingZeros(ip);
+    // return (32 - zeroes);
+
+    int zeroes = 0;
+    while(ip % 2 == 0 && ip != 0) {
+      zeroes++;
+      ip = ip / 2;
+    }
+    return (32 - zeroes);
+  }
+
 	/**
 	 * Lookup the route entry that matches a given IP address.
 	 * @param ip IP address
@@ -38,9 +78,21 @@ public class RouteTable
 		synchronized(this.entries)
 		{
 			/*****************************************************************/
-			/* TODO: Find the route entry with the longest prefix match	  */
-			
-			return null;
+			/* Find the route entry with the longest prefix match	*/
+      int longestPrefix = -1;
+      RouteEntry matchingEntry = null;
+      for (RouteEntry entry : this.entries) {
+        int maskedAddress = entry.getMaskAddress() & ip;
+        int destAddress = entry.getDestinationAddress();
+        if (destAddress == maskedAddress) {
+          int prefix = getPrefixLength(destAddress);
+          if (prefix > longestPrefix) {
+            longestPrefix = prefix;
+            matchingEntry = entry;
+          }
+        }
+      }
+			return matchingEntry;
 			
 			/*****************************************************************/
 		}
