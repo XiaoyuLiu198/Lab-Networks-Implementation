@@ -55,9 +55,9 @@ public class RouteTable {
       RouteEntry matchingEntry = null;
       for (RouteEntry entry : this.entries) {
         int maskedAddress = entry.getMaskAddress() & ip;
-        int destAddress = entry.getGatewayAddress();
-        if (destAddress == maskedAddress) {
-          int prefix = getPrefixLength(destAddress);
+        int gatewayAddress = entry.getGatewayAddress();
+        if (gatewayAddress == maskedAddress) {
+          int prefix = getPrefixLength(gatewayAddress);
           if (prefix > longestPrefix) {
             longestPrefix = prefix;
             matchingEntry = entry;
