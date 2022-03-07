@@ -87,7 +87,9 @@ public class Router extends Device {
     System.out.println("***1");
     System.out.println(etherPacket.getEtherType());
     System.out.println(Ethernet.TYPE_IPv4);
-    if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) return;  // drop packet if not IPv4
+
+    // if (etherPacket.getEtherType() == Ethernet.TYPE_ARP) ;  // drop packet if not IPv4
+    
 
     IPv4 packet = (IPv4) etherPacket.getPayload();
     short checksum = packet.getChecksum();
