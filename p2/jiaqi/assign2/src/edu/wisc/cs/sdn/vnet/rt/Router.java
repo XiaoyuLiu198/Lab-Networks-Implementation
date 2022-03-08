@@ -94,12 +94,12 @@ public class Router extends Device {
 
     IPv4 packet = (IPv4) etherPacket.getPayload();
     IPv4 originalPacket = packet;
-    short checksum = packet.getChecksum();
+    // short checksum = packet.getChecksum();
 
-    packet = packet.setChecksum((short)0);
-    byte[] data = packet.serialize();
-    packet = (IPv4) packet.deserialize(data, 0, data.length);
-    if (checksum != packet.getChecksum()) return;  // drop packet if checksum incorrect
+    // packet = packet.setChecksum((short)0);
+    // byte[] data = packet.serialize();
+    // packet = (IPv4) packet.deserialize(data, 0, data.length);
+    // if (checksum != packet.getChecksum()) return;  // drop packet if checksum incorrect
 
     originalPacket = originalPacket.setTtl((byte) (packet.getTtl() - 1));
     if (originalPacket.getTtl() <= (byte) 0) return;  // drop packet if decremented TTL is 0
