@@ -280,7 +280,7 @@ public class IPv4 extends BasePacket {
     }
 
     /**
-     * Serializes the packet. Will compute and set the following fields if they
+     * SeriSerializes the packet. Will compute and set the following fields if they
      * are set to specific values at the time serialize is called:
      *      -checksum : 0
      *      -headerLength : 0

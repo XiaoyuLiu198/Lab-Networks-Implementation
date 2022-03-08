@@ -5,6 +5,9 @@ import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
 
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.MACAddress;
 
 /**
  * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
@@ -83,8 +86,51 @@ public class Router extends Device
 				etherPacket.toString().replace("\n", "\n\t"));
 		
 		/********************************************************************/
-		/* TODO: Handle packets                                             */
-		
+		short ether_type = etherPacket.getEtherType();
+		if (ether_type != Ethernet.TYPE_IPv4){
+			return;
+		}
+		else{
+			IPv4 header = (IPv4)etherPacket.getPayload();
+			byte origin = (byte)header.getChecksum();
+//			header.setChecksum((short)0);
+			header.resetChecksum();
+			byte[] res = header.serialize();
+			IPacket returned = header.deserialize(res, 0, res.length);
+			IPv4 returned_ipv4 = (IPv4)returned.getPayload();
+			byte accumulate = (byte)returned_ipv4.getChecksum();
+			if (accumulate != origin){
+				return;
+			}
+			else{
+				byte ttl = header.getTtl();
+				ttl --;
+				header.setTtl(ttl);
+				byte curr_ttl = header.getTtl();
+				if (curr_ttl == 0){
+					return;
+				}
+				else{
+					int dest_add = returned_ipv4.getDestinationAddress();
+					if (inIface.getIpAddress() == returned_ipv4.getDestinationAddress()){
+						return;
+					}
+					else{
+						RouteEntry matched_add = routeTable.lookup(dest_add);
+						if (matched_add == null){
+							return;
+						}
+						else{
+							Iface matched_int = matched_add.getInterface();
+							ArpEntry hop_up = arpCache.lookup(matched_add.getDestinationAddress());
+							byte[] hop_up_mac = hop_up.getMac().toBytes();
+							etherPacket.setDestinationMACAddress(hop_up_mac);
+							sendPacket(etherPacket, matched_int);
+						}
+					}
+				}
+			}
+		}
 		
 		/********************************************************************/
 	}
