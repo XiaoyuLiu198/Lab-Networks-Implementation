@@ -119,9 +119,10 @@ public class Router extends Device {
 
     int destAddress = packet.getDestinationAddress();
     RouteEntry resultEntry = routeTable.lookup(destAddress);
-    int gatewayAddress = resultEntry.getGatewayAddress();
+    
 
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
+    int gatewayAddress = resultEntry.getGatewayAddress();
 
     // System.out.println("nextHopIpAddress: "+nextHopIpAddress);
     ArpEntry arpEntry = null;
