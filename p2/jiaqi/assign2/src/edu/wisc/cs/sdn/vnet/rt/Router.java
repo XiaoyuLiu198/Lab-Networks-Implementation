@@ -124,12 +124,14 @@ public class Router extends Device {
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
 
     System.out.println("***9");
+    System.out.println("nextHopIpAddress: "+nextHopIpAddress);
     ArpEntry arpEntry = arpCache.lookup(nextHopIpAddress);
+    System.out.println("arpEntry: " + arpEntry.toString());
     if (arpEntry == null) return;  // drop packet if no entry in ARP table
 
     MACAddress nextHopMACAddress = arpEntry.getMac();
     MACAddress sourceMACAddress = inIface.getMacAddress();
-
+    System.out.println("10");
     etherPacket.setSourceMACAddress(sourceMACAddress.toBytes());
     etherPacket.setDestinationMACAddress(nextHopMACAddress.toBytes());
 
