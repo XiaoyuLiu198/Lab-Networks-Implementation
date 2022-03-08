@@ -114,14 +114,21 @@ public class Router extends Device {
     
     int gatewayAddress = resultEntry.getGatewayAddress();
 
-    ArpEntry arpEntry = (gatewayAddress == 0) ? arpCache.lookup(destAddress) : arpCache.lookup(gatewayAddress);
+    // ArpEntry arpEntry = (gatewayAddress == 0) ? arpCache.lookup(destAddress) : arpCache.lookup(gatewayAddress);
+    ArpEntry arpEntry = null;
+    if (gatewayAddress != 0) {
+      arpEntry = arpCache.lookup(gatewayAddress);
+    } else {
+      arpEntry = arpCache.lookup(destAddress);
+    }
+
     if (arpEntry == null) return;  // drop packet if no entry in ARP table
 
     MACAddress srcMACAddress = resultEntry.getInterface().getMacAddress();
     MACAddress destMACAddress = arpEntry.getMac();
 
     if (srcMACAddress == null) return;  
-    // if (srcMACAddress.equals(inIface.getMacAddress())) return;  // drop packet if MAC equals to interface received packet (self)
+    if (srcMACAddress.equals(inIface.getMacAddress())) return;  // drop packet if MAC equals to interface received packet (self)
 
     etherPacket.setSourceMACAddress(srcMACAddress.toBytes());
     etherPacket.setDestinationMACAddress(destMACAddress.toBytes());
