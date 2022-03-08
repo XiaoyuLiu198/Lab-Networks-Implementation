@@ -96,51 +96,45 @@ public class Router extends Device {
     IPv4 originalPacket = packet;
     short checksum = packet.getChecksum();
 
-    packet.resetChecksum();
+    packet = packet.setChecksum((short)0);
     byte[] data = packet.serialize();
     packet = (IPv4) packet.deserialize(data, 0, data.length);
     if (checksum != packet.getChecksum()) return;  // drop packet if checksum incorrect
 
-    originalPacket.setTtl((byte) (packet.getTtl() - 1));
+    originalPacket = originalPacket.setTtl((byte) (packet.getTtl() - 1));
     if (originalPacket.getTtl() <= (byte) 0) return;  // drop packet if decremented TTL is 0
 
-    System.out.println("***4");
-    data = originalPacket.serialize();
-    originalPacket = (IPv4) originalPacket.deserialize(data, 0, data.length);
-    etherPacket.setPayload(originalPacket);
+    byte[] newData = originalPacket.serialize();
+    originalPacket = (IPv4) originalPacket.deserialize(newData, 0, newData.length);
+    etherPacket = (Ethernet) etherPacket.setPayload(originalPacket);
 
-    System.out.println("***5");
     for (Iface iface : interfaces.values()) {
       if (iface.getIpAddress() == originalPacket.getDestinationAddress()) return;  // drop packet if dest IP address matches one of the interfaces'
     }
 
     // Forwarding packet
 
-    System.out.println("***6");
     int nextHopIpAddress = originalPacket.getDestinationAddress();
     RouteEntry resultEntry = routeTable.lookup(nextHopIpAddress);
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
 
-    System.out.println("***9");
-    System.out.println("nextHopIpAddress: "+nextHopIpAddress);
+    // System.out.println("nextHopIpAddress: "+nextHopIpAddress);
     ArpEntry arpEntry = arpCache.lookup(nextHopIpAddress);
-    System.out.println("arpEntry: " + arpEntry.toString());
+
+    // System.out.println("arpEntry: " + arpEntry.toString());
     if (arpEntry == null) return;  // drop packet if no entry in ARP table
 
     MACAddress nextHopMACAddress = arpEntry.getMac();
     MACAddress sourceMACAddress = resultEntry.getInterface().getMacAddress();
-    // System.out.println("10");
 
-    System.out.println(sourceMACAddress);
-    System.out.println("sourceMACAddress: " + sourceMACAddress.toString());
-    System.out.println("nextHopaddr: " + nextHopMACAddress.toString());
+    // System.out.println(sourceMACAddress);
+    // System.out.println("sourceMACAddress: " + sourceMACAddress.toString());
+    // System.out.println("nextHopaddr: " + nextHopMACAddress.toString());
 
     etherPacket.setSourceMACAddress(sourceMACAddress.toBytes());
     etherPacket.setDestinationMACAddress(nextHopMACAddress.toBytes());
 
-    System.out.println("***7");
     sendPacket(etherPacket, resultEntry.getInterface());
-    System.out.println("***8");
     /********************************************************************/
   }
 }
