@@ -173,6 +173,7 @@ public class Router extends Device {
     // System.out.println("sourceMACAddress: " + sourceMACAddress.toString());
     // System.out.println("nextHopaddr: " + nextHopMACAddress.toString());
 
+    System.out.println("source MAC: "+ srcMACAddress);
     etherPacket.setSourceMACAddress(srcMACAddress.toBytes());
     etherPacket.setDestinationMACAddress(destMACAddress.toBytes());
 
