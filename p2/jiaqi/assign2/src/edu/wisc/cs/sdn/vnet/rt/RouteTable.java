@@ -33,12 +33,18 @@ public class RouteTable {
     // int zeroes = Integer.numberOfTrailingZeros(ip);
     // return (32 - zeroes);
 
-    int zeroes = 0;
-    while (ip % 2 == 0 && ip != 0) {
-      zeroes++;
-      ip = ip / 2;
+    // int zeroes = 0;
+    // while (ip % 2 == 0 && ip != 0) {
+    //   zeroes++;
+    //   ip = ip / 2;
+    // }
+
+    int prefix = 32;
+    while(prefix > 0 && (ip & 1) == 0) {
+      prefix = prefix >>> 1;
+      prefix--;
     }
-    return (32 - zeroes);
+    return prefix;
   }
 
   /**
