@@ -94,47 +94,58 @@ public class Router extends Device {
 
     IPv4 packet = (IPv4) etherPacket.getPayload();
     IPv4 originalPacket = packet;
-    // short checksum = packet.getChecksum();
+    short checksum = packet.getChecksum();
 
-    // packet = packet.setChecksum((short)0);
-    // byte[] data = packet.serialize();
-    // packet = (IPv4) packet.deserialize(data, 0, data.length);
-    // if (checksum != packet.getChecksum()) return;  // drop packet if checksum incorrect
+    packet = packet.setChecksum((short) 0);
+    byte[] data = packet.serialize();
+    packet = (IPv4) packet.deserialize(data, 0, data.length);
+    if (checksum != packet.getChecksum()) return;  // drop packet if checksum incorrect
 
-    originalPacket = originalPacket.setTtl((byte) (originalPacket.getTtl() - 1));
-    if (originalPacket.getTtl() <= (byte) 0) return;  // drop packet if decremented TTL is 0
+    packet = packet.setTtl((byte) (originalPacket.getTtl() - 1));
+    if (packet.getTtl() <= (byte) 0) return;  // drop packet if decremented TTL is 0
 
-    // byte[] newData = originalPacket.serialize();
-    // originalPacket.deserialize(newData, 0, newData.length);
-    // etherPacket = (Ethernet) etherPacket.setPayload(originalPacket);
+    // ZERO CHECKSUM AGAIN
+    packet = packet.setChecksum((short) 0);
+
+    byte[] newData = packet.serialize();
+    packet = (IPv4) packet.deserialize(newData, 0, newData.length);
+    Ethernet newEtherPacket  = (Ethernet) etherPacket.setPayload(packet);
 
     for (Iface iface : interfaces.values()) {
-      if (iface.getIpAddress() == originalPacket.getDestinationAddress()) return;  // drop packet if dest IP address matches one of the interfaces'
+      if (iface.getIpAddress() == packet.getDestinationAddress()) return;  // drop packet if dest IP address matches one of the interfaces'
     }
 
     // Forwarding packet
 
-    int nextHopIpAddress = originalPacket.getDestinationAddress();
-    RouteEntry resultEntry = routeTable.lookup(nextHopIpAddress);
+    int destAddress = packet.getDestinationAddress();
+    RouteEntry resultEntry = routeTable.lookup(destAddress);
+    int gatewayAddress = resultEntry.getGatewayAddress();
+
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
 
     // System.out.println("nextHopIpAddress: "+nextHopIpAddress);
-    ArpEntry arpEntry = arpCache.lookup(nextHopIpAddress);
+    ArpEntry arpEntry = null;
+    if (gatewayAddress != 0) {
+      arpEntry = arpCache.lookup(gatewayAddress);
+    } else {
+      arpEntry = arpCache.lookup(destAddress); 
+    }
 
     // System.out.println("arpEntry: " + arpEntry.toString());
     if (arpEntry == null) return;  // drop packet if no entry in ARP table
 
-    MACAddress nextHopMACAddress = arpEntry.getMac();
-    MACAddress sourceMACAddress = resultEntry.getInterface().getMacAddress();
+    MACAddress srcMACAddress = resultEntry.getInterface().getMacAddress();
+    MACAddress destMACAddress = arpEntry.getMac();
+    
 
     // System.out.println(sourceMACAddress);
     // System.out.println("sourceMACAddress: " + sourceMACAddress.toString());
     // System.out.println("nextHopaddr: " + nextHopMACAddress.toString());
 
-    etherPacket.setSourceMACAddress(sourceMACAddress.toBytes());
-    etherPacket.setDestinationMACAddress(nextHopMACAddress.toBytes());
+    newEtherPacket.setSourceMACAddress(srcMACAddress.toBytes());
+    newEtherPacket.setDestinationMACAddress(destMACAddress.toBytes());
 
-    sendPacket(etherPacket, resultEntry.getInterface());
+    sendPacket(newEtherPacket, resultEntry.getInterface());
     /********************************************************************/
   }
 }
