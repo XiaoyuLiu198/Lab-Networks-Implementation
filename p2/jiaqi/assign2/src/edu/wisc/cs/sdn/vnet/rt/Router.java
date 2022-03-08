@@ -138,7 +138,7 @@ public class Router extends Device {
 
     System.out.println("***7");
 
-    if (resultEntry.getInterface().getMacAddress().equals(inIface.getMacAddress())) return;
+    // if (resultEntry.getInterface().getMacAddress().equals(inIface.getMacAddress())) return;
 
     System.out.println("***8");
 
