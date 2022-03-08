@@ -101,12 +101,12 @@ public class Router extends Device {
     // packet = (IPv4) packet.deserialize(data, 0, data.length);
     // if (checksum != packet.getChecksum()) return;  // drop packet if checksum incorrect
 
-    originalPacket = originalPacket.setTtl((byte) (packet.getTtl() - 1));
+    originalPacket = originalPacket.setTtl((byte) (originalPacket.getTtl() - 1));
     if (originalPacket.getTtl() <= (byte) 0) return;  // drop packet if decremented TTL is 0
 
-    byte[] newData = originalPacket.serialize();
-    originalPacket = (IPv4) originalPacket.deserialize(newData, 0, newData.length);
-    etherPacket = (Ethernet) etherPacket.setPayload(originalPacket);
+    // byte[] newData = originalPacket.serialize();
+    // originalPacket.deserialize(newData, 0, newData.length);
+    // etherPacket = (Ethernet) etherPacket.setPayload(originalPacket);
 
     for (Iface iface : interfaces.values()) {
       if (iface.getIpAddress() == originalPacket.getDestinationAddress()) return;  // drop packet if dest IP address matches one of the interfaces'
