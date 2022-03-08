@@ -134,7 +134,7 @@ public class Router extends Device {
     System.out.println();
 
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
-    // int gatewayAddress = resultEntry.getGatewayAddress();
+    int gatewayAddress = resultEntry.getGatewayAddress();
 
     System.out.println("***7");
 
@@ -144,16 +144,17 @@ public class Router extends Device {
 
     // System.out.println("nextHopIpAddress: "+nextHopIpAddress);
     // ArpEntry arpEntry = null;
-    // if (gatewayAddress != 0) {
-    //   arpEntry = arpCache.lookup(gatewayAddress);
-    // } else {
-    //   arpEntry = arpCache.lookup(destAddress); 
-    // }
+    ArpEntry arpEntry = null;
+    if (gatewayAddress != 0) {
+      arpEntry = arpCache.lookup(gatewayAddress);
+    } else {
+      arpEntry = arpCache.lookup(destAddress); 
+    }
 
     System.out.println("***9");
 
 
-    ArpEntry arpEntry = arpCache.lookup(destAddress);
+    // ArpEntry arpEntry = arpCache.lookup(destAddress);
 
     // System.out.println("arpEntry: " + arpEntry.toString());
     if (arpEntry == null) return;  // drop packet if no entry in ARP table
