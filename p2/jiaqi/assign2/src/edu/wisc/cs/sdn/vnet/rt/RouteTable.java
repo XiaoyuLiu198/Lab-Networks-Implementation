@@ -30,9 +30,6 @@ public class RouteTable {
   }
 
   private int getPrefixLength(int ip) {
-    // int zeroes = Integer.numberOfTrailingZeros(ip);
-    // return (32 - zeroes);
-
     // int zeroes = 0;
     // while (ip % 2 == 0 && ip != 0) {
     //   zeroes++;
@@ -71,7 +68,6 @@ public class RouteTable {
         }
       }
       return matchingEntry;
-
       /*****************************************************************/
     }
   }
