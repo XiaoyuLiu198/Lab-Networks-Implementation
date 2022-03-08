@@ -84,40 +84,23 @@ public class Router extends Device {
 
     /********************************************************************/
     /* Handle packets */
-    
-    // System.out.println("***1");
-    // System.out.println(etherPacket.getEtherType());
-    // System.out.println(Ethernet.TYPE_IPv4);
 
-    System.out.println("***1");
     if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) return;  // drop packet if not IPv4
-    System.out.println("***2");
 
     IPv4 packet = (IPv4) etherPacket.getPayload();
-    //IPv4 originalPacket = packet;
-    short checksum = packet.getChecksum();
-    
+    short checksum = packet.getChecksum();    
     byte ttl = packet.getTtl();
-
-    System.out.println("***3");
     packet.setChecksum((short) 0);
     byte[] data = packet.serialize();
     packet = (IPv4) packet.deserialize(data, 0, data.length);
-    if (checksum != packet.getChecksum() || ttl <= 1) return;  // drop packet if checksum incorrect
 
+    if (checksum != packet.getChecksum() || ttl <= 1) return;  // drop packet if checksum incorrect
     ttl -= 1;
     packet = packet.setTtl((byte) (ttl));
-    // if (packet.getTtl() <= (byte) 0) return;  // drop packet if decremented TTL is 0
-
-    // ZERO CHECKSUM AGAIN
-    packet.setChecksum((short) 0);
-    System.out.println("***4");
-
+    packet.setChecksum((short) 0);  // ZERO CHECKSUM AGAIN
     byte[] newData = packet.serialize();
     packet = (IPv4) packet.deserialize(newData, 0, newData.length);
     etherPacket.setPayload(packet);
-
-    System.out.println("***5");
 
     for (Iface iface : interfaces.values()) {
       if (iface.getIpAddress() == packet.getDestinationAddress()) return;  // drop packet if dest IP address matches one of the interfaces'
@@ -125,58 +108,26 @@ public class Router extends Device {
 
     // Forwarding packet
 
-    System.out.println("***6");
-
     int destAddress = packet.getDestinationAddress();
     RouteEntry resultEntry = routeTable.lookup(destAddress);
-    
-    System.out.println("destAddress: " + destAddress);
-    System.out.println();
-
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
+    
     int gatewayAddress = resultEntry.getGatewayAddress();
 
-    System.out.println("***7");
-
-    // if (resultEntry.getInterface().getMacAddress().equals(inIface.getMacAddress())) return;
-
-    System.out.println("***8");
-
-    ArpEntry arpEntry = null;
-
-    if (gatewayAddress != 0) {
-      arpEntry = arpCache.lookup(gatewayAddress);
-    } else {
-      arpEntry = arpCache.lookup(destAddress); 
-    }
-
-    System.out.println("***9");
-
-    // ArpEntry arpEntry = arpCache.lookup(destAddress);
-
-    // System.out.println("arpEntry: " + arpEntry.toString());
+    ArpEntry arpEntry = (gatewayAddress == 0) ? arpCache.lookup(destAddress) : arpCache.lookup(gatewayAddress);
     if (arpEntry == null) return;  // drop packet if no entry in ARP table
 
     MACAddress srcMACAddress = resultEntry.getInterface().getMacAddress();
     MACAddress destMACAddress = arpEntry.getMac();
 
-    if (srcMACAddress == null) return;
-    if (srcMACAddress.equals(inIface.getMacAddress())) return;
-    
-    // System.out.println(sourceMACAddress);
-    // System.out.println("sourceMACAddress: " + sourceMACAddress.toString());
-    // System.out.println("nextHopaddr: " + nextHopMACAddress.toString());
+    if (srcMACAddress == null) return;  
+    // if (srcMACAddress.equals(inIface.getMacAddress())) return;  // drop packet if MAC equals to interface received packet (self)
 
-    System.out.println("source MAC: "+ srcMACAddress);
     etherPacket.setSourceMACAddress(srcMACAddress.toBytes());
     etherPacket.setDestinationMACAddress(destMACAddress.toBytes());
 
-    
-    System.out.println("srcMACAddress.toBytes(): " + srcMACAddress.toBytes());
-    System.out.println("destMACAddress.toBytes(): " + destMACAddress.toBytes());
-    System.out.println("reach before sendPacket");
     sendPacket(etherPacket, resultEntry.getInterface());
-    System.out.println("reach bottom");
+
     /********************************************************************/
   }
 }
