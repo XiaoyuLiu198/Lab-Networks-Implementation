@@ -132,6 +132,8 @@ public class Router extends Device {
     MACAddress nextHopMACAddress = arpEntry.getMac();
     MACAddress sourceMACAddress = resultEntry.getInterface().getMacAddress();
     // System.out.println("10");
+
+    System.out.println(sourceMACAddress);
     System.out.println("sourceMACAddress: " + sourceMACAddress.toString());
     System.out.println("nextHopaddr: " + nextHopMACAddress.toString());
 
