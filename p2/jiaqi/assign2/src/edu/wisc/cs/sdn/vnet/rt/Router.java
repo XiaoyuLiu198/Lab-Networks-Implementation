@@ -125,7 +125,7 @@ public class Router extends Device {
     
 
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
-    int gatewayAddress = resultEntry.getGatewayAddress();
+    // int gatewayAddress = resultEntry.getGatewayAddress();
 
     if (resultEntry.getInterface().getMacAddress().equals(inIface.getMacAddress())) return;
 
@@ -153,7 +153,12 @@ public class Router extends Device {
     etherPacket.setSourceMACAddress(srcMACAddress.toBytes());
     etherPacket.setDestinationMACAddress(destMACAddress.toBytes());
 
+    System.out.println("destAddress: " + destAddress);
+    System.out.println("srcMACAddress.toBytes(): " + srcMACAddress.toBytes());
+    System.out.println("destMACAddress.toBytes(): " + destMACAddress.toBytes());
+    System.out.println("reach before sendPacket");
     sendPacket(etherPacket, resultEntry.getInterface());
+    System.out.println("reach bottom");
     /********************************************************************/
   }
 }
