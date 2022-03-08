@@ -145,10 +145,16 @@ public class Router extends Device {
     // System.out.println("nextHopIpAddress: "+nextHopIpAddress);
     // ArpEntry arpEntry = null;
     ArpEntry arpEntry = null;
+    MACAddress srcMACAddress = null;
+    // MACAddress destMACAddress = null;
+
     if (gatewayAddress != 0) {
       arpEntry = arpCache.lookup(gatewayAddress);
+      srcMACAddress = inIface.getMacAddress();
+      
     } else {
       arpEntry = arpCache.lookup(destAddress); 
+      srcMACAddress = resultEntry.getInterface().getMacAddress();
     }
 
     System.out.println("***9");
@@ -159,7 +165,7 @@ public class Router extends Device {
     // System.out.println("arpEntry: " + arpEntry.toString());
     if (arpEntry == null) return;  // drop packet if no entry in ARP table
 
-    MACAddress srcMACAddress = resultEntry.getInterface().getMacAddress();
+    // MACAddress srcMACAddress = resultEntry.getInterface().getMacAddress();
     MACAddress destMACAddress = arpEntry.getMac();
     
 
