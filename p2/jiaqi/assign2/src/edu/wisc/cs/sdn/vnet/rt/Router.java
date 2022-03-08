@@ -89,8 +89,9 @@ public class Router extends Device {
     // System.out.println(etherPacket.getEtherType());
     // System.out.println(Ethernet.TYPE_IPv4);
 
+    System.out.println("***1");
     if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) return;  // drop packet if not IPv4
-    
+    System.out.println("***2");
 
     IPv4 packet = (IPv4) etherPacket.getPayload();
     //IPv4 originalPacket = packet;
@@ -98,6 +99,7 @@ public class Router extends Device {
     
     byte ttl = packet.getTtl();
 
+    System.out.println("***3");
     packet.setChecksum((short) 0);
     byte[] data = packet.serialize();
     packet = (IPv4) packet.deserialize(data, 0, data.length);
@@ -109,16 +111,21 @@ public class Router extends Device {
 
     // ZERO CHECKSUM AGAIN
     packet.setChecksum((short) 0);
+    System.out.println("***4");
 
     byte[] newData = packet.serialize();
     packet = (IPv4) packet.deserialize(newData, 0, newData.length);
     etherPacket.setPayload(packet);
+
+    System.out.println("***5");
 
     for (Iface iface : interfaces.values()) {
       if (iface.getIpAddress() == packet.getDestinationAddress()) return;  // drop packet if dest IP address matches one of the interfaces'
     }
 
     // Forwarding packet
+
+    System.out.println("***6");
 
     int destAddress = packet.getDestinationAddress();
     RouteEntry resultEntry = routeTable.lookup(destAddress);
@@ -127,7 +134,11 @@ public class Router extends Device {
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
     // int gatewayAddress = resultEntry.getGatewayAddress();
 
+    System.out.println("***7");
+
     if (resultEntry.getInterface().getMacAddress().equals(inIface.getMacAddress())) return;
+
+    System.out.println("***8");
 
     // System.out.println("nextHopIpAddress: "+nextHopIpAddress);
     // ArpEntry arpEntry = null;
@@ -137,6 +148,9 @@ public class Router extends Device {
     //   arpEntry = arpCache.lookup(destAddress); 
     // }
 
+    System.out.println("***9");
+
+    
     ArpEntry arpEntry = arpCache.lookup(destAddress);
 
     // System.out.println("arpEntry: " + arpEntry.toString());
