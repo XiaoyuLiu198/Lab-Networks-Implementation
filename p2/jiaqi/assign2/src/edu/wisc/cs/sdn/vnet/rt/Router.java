@@ -130,7 +130,7 @@ public class Router extends Device {
     if (arpEntry == null) return;  // drop packet if no entry in ARP table
 
     MACAddress nextHopMACAddress = arpEntry.getMac();
-    MACAddress sourceMACAddress = inIface.getMacAddress();
+    MACAddress sourceMACAddress = resultEntry.getInterface().getMacAddress();
     // System.out.println("10");
     System.out.println("sourceMACAddress: " + sourceMACAddress.toString());
     System.out.println("nextHopaddr: " + nextHopMACAddress.toString());
