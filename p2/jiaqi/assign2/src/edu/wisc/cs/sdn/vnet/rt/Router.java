@@ -130,6 +130,8 @@ public class Router extends Device {
     int destAddress = packet.getDestinationAddress();
     RouteEntry resultEntry = routeTable.lookup(destAddress);
     
+    System.out.println("destAddress: " + destAddress);
+    System.out.println();
 
     if (resultEntry == null) return;  // drop packet if no entry in router table matches 
     // int gatewayAddress = resultEntry.getGatewayAddress();
@@ -150,7 +152,7 @@ public class Router extends Device {
 
     System.out.println("***9");
 
-    
+
     ArpEntry arpEntry = arpCache.lookup(destAddress);
 
     // System.out.println("arpEntry: " + arpEntry.toString());
@@ -167,7 +169,7 @@ public class Router extends Device {
     etherPacket.setSourceMACAddress(srcMACAddress.toBytes());
     etherPacket.setDestinationMACAddress(destMACAddress.toBytes());
 
-    System.out.println("destAddress: " + destAddress);
+    
     System.out.println("srcMACAddress.toBytes(): " + srcMACAddress.toBytes());
     System.out.println("destMACAddress.toBytes(): " + destMACAddress.toBytes());
     System.out.println("reach before sendPacket");

@@ -60,6 +60,10 @@ public class RouteTable {
       int longestPrefix = -1;
       RouteEntry matchingEntry = null;
       for (RouteEntry entry : this.entries) {
+        System.out.println("entry.getMaskAddress(): " + entry.getMaskAddress());
+        System.out.println("entry.getDestinationAddress(): " + entry.getDestinationAddress());
+        System.out.println("entry.getGatewayAddress(): " + entry.getGatewayAddress());
+
         int maskedAddress = entry.getMaskAddress() & ip;
         int destAddress = entry.getDestinationAddress();
         if (destAddress == maskedAddress) {
