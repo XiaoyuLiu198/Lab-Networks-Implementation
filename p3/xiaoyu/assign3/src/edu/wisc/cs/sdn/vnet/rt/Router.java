@@ -241,7 +241,7 @@ public class Router extends Device
 
 	class RipEntry
 	{
-		protected int addr, mask, nextHop, metric;
+		protected int addr, mask, metric;
 		protected long timestamp;
 		public RipEntry(int addr, int mask, int metric, long timestamp) {
 			this.addr = addr;
@@ -259,7 +259,7 @@ public class Router extends Device
 			int mask = iface.getSubnetMask();
 			int addr = mask & iface.getIpAddress();
 			ripDict.put(addr, new RipEntry(addr, mask, 0, -1));
-			this.routeTable.insert(iface.getIpAddress(), 0, mask, iface);
+			this.routeTable.insert(iface.getIpAddress(), mask, 0, iface);
 			sendRip(rip_request, null, iface);
 		}
 
@@ -346,7 +346,7 @@ public class Router extends Device
 			case rip_unsol:
 				rip.setCommand(RIPv2.COMMAND_RESPONSE);
 			case rip_response:
-			rip.setCommand(RIPv2.COMMAND_RESPONSE);
+				rip.setCommand(RIPv2.COMMAND_RESPONSE);
 		}
 
 		ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
@@ -384,6 +384,7 @@ public class Router extends Device
 				sendRip(rip_response, etherPacket, inIface);
 				break;
 			case RIPv2.COMMAND_RESPONSE:
+				// update the route table and DV when command rip response
 				IPv4 ip = (IPv4)etherPacket.getPayload();
 				UDP udp = (UDP)ip.getPayload();
 				RIPv2 rip = (RIPv2)udp.getPayload();
@@ -407,7 +408,7 @@ public class Router extends Device
 						}
 						else{
 							ripDict.put(netaddr, new RipEntry(addr, mask, metric, System.currentTimeMillis()));
-							this.routeTable.insert(addr, nextHop, mask, inIface);
+							this.routeTable.insert(addr, mask, nextHop, inIface);
 						}
 					}
 				}
