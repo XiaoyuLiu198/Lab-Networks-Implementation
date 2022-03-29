@@ -375,7 +375,7 @@ public class Router extends Device
 		udp.setPayload(rip);
 		rip.setEntries(entries);
 
-		sendPacket(ether, inIface);
+		this.sendPacket(ether, inIface);
 	}
 
 	private void handleRipPacket(byte type, Ethernet etherPacket, Iface inIface){
