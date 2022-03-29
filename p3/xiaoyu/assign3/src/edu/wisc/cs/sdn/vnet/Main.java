@@ -20,6 +20,7 @@ public class Main
 		short port = DEFAULT_PORT;
 		VNSComm vnsComm = null;
 		Device dev = null;
+		boolean have_r = false;
 		
 		// Parse arguments
 		for(int i = 0; i < args.length; i++)
@@ -39,10 +40,8 @@ public class Main
 			else if (arg.equals("-l"))
 			{ logfile = args[++i]; }
 			else if (arg.equals("-r"))
-			{ routeTableFile = args[++i]; 
-				if (routeTableFile == null){
-					Boolean rip = true;
-				}
+			{ routeTableFile = args[++i];
+				have_r = true;
 			}
 			else if (arg.equals("-a"))
 			{ arpCacheFile = args[++i]; }
@@ -92,9 +91,9 @@ public class Main
 			// Read static route table
 			if (routeTableFile != null)
 			{ ((Router)dev).loadRouteTable(routeTableFile); }
-			// else{
-			// 	((Router)dev).RIP();
-			// }
+			else if(have_r == false | routeTableFile == null){
+				((Router)dev).rip();
+			}
 			
 			// Read static ACP cache
 			if (arpCacheFile != null)
