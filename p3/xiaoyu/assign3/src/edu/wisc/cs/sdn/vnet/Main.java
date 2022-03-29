@@ -39,7 +39,11 @@ public class Main
 			else if (arg.equals("-l"))
 			{ logfile = args[++i]; }
 			else if (arg.equals("-r"))
-			{ routeTableFile = args[++i]; }
+			{ routeTableFile = args[++i]; 
+				if (routeTableFile == null){
+					Boolean rip = true;
+				}
+			}
 			else if (arg.equals("-a"))
 			{ arpCacheFile = args[++i]; }
 		}
@@ -88,6 +92,9 @@ public class Main
 			// Read static route table
 			if (routeTableFile != null)
 			{ ((Router)dev).loadRouteTable(routeTableFile); }
+			// else{
+			// 	((Router)dev).RIP();
+			// }
 			
 			// Read static ACP cache
 			if (arpCacheFile != null)
