@@ -1,7 +1,7 @@
 package edu.wisc.cs.sdn.vnet.rt;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
@@ -17,6 +17,7 @@ import net.floodlightcontroller.packet.RIPv2;
 import net.floodlightcontroller.packet.RIPv2Entry;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packet.ICMP;
+import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.Data;
 
 /**
@@ -124,25 +125,48 @@ public class Router extends Device
 		/********************************************************************/
 	}
 
-	private void ICMPMessage(Ethernet etherPacket, Iface inIface, byte type, byte code, boolean ttl){
+	private void ICMPMessage(Ethernet etherPacket, Iface inIface, byte type, byte code, boolean Echo){
 		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
-		byte[] serialized = ipPacket.serialize();
 		// prepare ether packet header
 		Ethernet ether = new Ethernet();
 		ether.setEtherType(Ethernet.TYPE_IPv4);
-		int dstAddr = ipPacket.getDestinationAddress(); // get destionation ip address
-		RouteEntry bestMatch = this.routeTable.lookup(dstAddr); // Find matching route table entry 
+		int srcAddr = ipPacket.getSourceAddress(); // get destionation ip address
+		RouteEntry bestMatch = this.routeTable.lookup(srcAddr); // Find matching route table entry 
+		if (bestMatch == null){
+			System.out.println("No matched route entry found");
+			return;
+		}
+		int nextHop = bestMatch.getInterface().getIpAddress();
+		// int nextHop = bestMatch.getGatewayAddress());
+		if(nextHop == 0){
+			nextHop = srcAddr;
+		}
 		ether.setSourceMACAddress(bestMatch.getInterface().getMacAddress().toBytes()); // update source MACaddress
-		ether.setDestinationMACAddress(this.arpCache.lookup(bestMatch.getInterface().getIpAddress()).getMac().toBytes()); // update destination MACaddress
+		ether.setDestinationMACAddress(this.arpCache.lookup(nextHop).getMac().toBytes()); // update destination MACaddress
+		System.out.println("Handle ether packet header");
 
 		// prepare IP header
 		IPv4 ip = new IPv4();
-		if (ttl == true){
-			ip.setTtl((byte) 64); // set ttl
-		}
+		ip.setTtl((byte) 64); // set ttl
 		ip.setProtocol((byte) IPv4.PROTOCOL_ICMP); // set protocol
-		ip.setSourceAddress(bestMatch.getInterface().getIpAddress()); // set source ip
+		byte[] inData;
+		if (Echo == true){
+			ip.setSourceAddress(ipPacket.getSourceAddress()); // set source ip
+			byte[] oriIpHeaderPayload = ipPacket.serialize();
+			int ipHeaderLen = ipPacket.getHeaderLength()*4;
+			inData = new byte[4 + ipHeaderLen + 8];
+			Arrays.fill(inData, 0, 4, (byte)0);
+			for(int i = 0; i < ipHeaderLen + 8; i ++){
+				inData[i + 4] = oriIpHeaderPayload[i]; 
+			}
+		}
+		else{
+			ip.setSourceAddress(ipPacket.getDestinationAddress());
+			inData = ((ICMP)ipPacket.getPayload()).getPayload().serialize();
+		}
+		
 		ip.setDestinationAddress(ipPacket.getSourceAddress()); // set destination ip
+		System.out.println("Handle ip packet header");
 		
 		Data data = new Data();
 		ICMP icmp = new ICMP();
@@ -150,90 +174,68 @@ public class Router extends Device
 		// prepare ICMP header
 		icmp.setIcmpType(type); // try no byte wrapper
 		icmp.setIcmpCode(code);
-
-		// prepare padding
-		byte[] padding_4 = new byte[4];
-		for (int i = 0; i < 4; i ++){
-			padding_4[i] = (byte) 0;
-		}
-		byte[] padding_8 = new byte[8];
-		for (int i = 0; i < 8; i ++){
-			padding_8[i] = (byte) 0;
-		}
-
-		// link the header together
-		ByteBuffer temp = ByteBuffer.allocate(32);
-		temp.put(ether.serialize());
-		System.out.println("Ether header size is: " + ether.serialize().length); // double check the header size
-		temp.put(ip.serialize());
-		System.out.println("IPv4 header size is: " + ip.serialize().length); // double check the header size
-		temp.put(icmp.serialize());
-		System.out.println("ICMP header size is: " + icmp.serialize().length); // double check the header size
-		temp.put(padding_4);
-		temp.put(serialized);
-		System.out.println("Original IPv4 header size is: " + icmp.serialize().length); // double check the header size
-		temp.put(padding_8);
 		
-		data.setData(temp.array());
-		icmp.setPayload(data);
-		ip.setPayload(icmp);
+		data.setData(inData);
 		ether.setPayload(ip);
+		ip.setPayload(icmp);
+		icmp.setPayload(data);
+		System.out.println("Combined");
 
 		this.sendPacket(ether, bestMatch.getInterface());
 	}
 
-	private void echoReply(Ethernet etherPacket, Iface inIface){
-		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
-		byte[] serialized = ipPacket.serialize(); // TODO: original icmp header??
-		// prepare ether packet header
-		Ethernet ether = new Ethernet();
-		ether.setEtherType(Ethernet.TYPE_IPv4);
-		int dstAddr = ipPacket.getDestinationAddress(); // get destionation ip address
-		boolean exit = true;
-		for (Iface iface: this.interfaces.values()){
-			if (iface.getIpAddress() == dstAddr){
-				exit = false;
-			}
-		}
-		if (exit == true){
-			return;
-		}
+	// private void echoReply(Ethernet etherPacket, Iface inIface){
+	// 	IPv4 ipPacket = (IPv4)etherPacket.getPayload();
+	// 	byte[] serialized = ipPacket.serialize(); // TODO: original icmp header??
+	// 	// prepare ether packet header
+	// 	Ethernet ether = new Ethernet();
+	// 	ether.setEtherType(Ethernet.TYPE_IPv4);
+	// 	int dstAddr = ipPacket.getDestinationAddress(); // get destionation ip address
+	// 	boolean exit = true;
+	// 	for (Iface iface: this.interfaces.values()){
+	// 		if (iface.getIpAddress() == dstAddr){
+	// 			exit = false;
+	// 		}
+	// 	}
+	// 	if (exit == true){
+	// 		return;
+	// 	}
 		
-		RouteEntry bestMatch = this.routeTable.lookup(dstAddr); // Find matching route table entry 
-		ether.setSourceMACAddress(bestMatch.getInterface().getMacAddress().toBytes()); // update source MACaddress
-		ether.setDestinationMACAddress(this.arpCache.lookup(bestMatch.getInterface().getIpAddress()).getMac().toBytes()); // update destination MACaddress
+	// 	RouteEntry bestMatch = this.routeTable.lookup(dstAddr); // Find matching route table entry 
+	// 	ether.setSourceMACAddress(bestMatch.getInterface().getMacAddress().toBytes()); // update source MACaddress
+	// 	ether.setDestinationMACAddress(this.arpCache.lookup(bestMatch.getInterface().getIpAddress()).getMac().toBytes()); // update destination MACaddress
 
-		// prepare IP header
-		IPv4 ip = new IPv4();
-		ip.setProtocol((byte) IPv4.PROTOCOL_ICMP); // set protocol
-		ip.setSourceAddress(ipPacket.getDestinationAddress()); // set source ip
-		ip.setDestinationAddress(ipPacket.getSourceAddress()); // set destination ip
+	// 	// prepare IP header
+	// 	IPv4 ip = new IPv4();
+	// 	ip.setProtocol((byte) IPv4.PROTOCOL_ICMP); // set protocol
+	// 	ip.setSourceAddress(ipPacket.getDestinationAddress()); // set source ip
+	// 	ip.setDestinationAddress(ipPacket.getSourceAddress()); // set destination ip
 		
-		Data data = new Data();
-		ICMP icmp = new ICMP();
+	// 	Data data = new Data();
+	// 	ICMP icmp = new ICMP();
 
-		// prepare ICMP header
-		icmp.setIcmpType((byte) 0); // try no byte wrapper
-		icmp.setIcmpCode((byte) 0);
+	// 	// prepare ICMP header
+	// 	icmp.setIcmpType((byte) 0); // try no byte wrapper
+	// 	icmp.setIcmpCode((byte) 0);
 
-		// link the header together
-		ByteBuffer temp = ByteBuffer.allocate(32);
-		temp.put(ether.serialize());
-		System.out.println("Ether header size is: " + ether.serialize().length); // double check the header size
-		temp.put(ip.serialize());
-		System.out.println("IPv4 header size is: " + ip.serialize().length); // double check the header size
-		temp.put(icmp.serialize());
-		System.out.println("ICMP header size is: " + icmp.serialize().length); // double check the header size
-		temp.put(serialized);
-		System.out.println("Original IPv4 header size is: " + icmp.serialize().length); // double check the header size
+	// 	// link the header together
+	// 	ByteBuffer temp = ByteBuffer.allocate(32);
+	// 	temp.put(ether.serialize());
+	// 	System.out.println("Ether header size is: " + ether.serialize().length); // double check the header size
+	// 	temp.put(ip.serialize());
+	// 	System.out.println("IPv4 header size is: " + ip.serialize().length); // double check the header size
+	// 	temp.put(icmp.serialize());
+	// 	System.out.println("ICMP header size is: " + icmp.serialize().length); // double check the header size
+	// 	temp.put(serialized);
+	// 	System.out.println("Original IPv4 header size is: " + icmp.serialize().length); // double check the header size
 		
-		data.setData(temp.array());
-		icmp.setPayload(data);
-		ip.setPayload(icmp);
-		ether.setPayload(ip);
+	// 	data.setData(temp.array());
+	// 	icmp.setPayload(data);
+	// 	ip.setPayload(icmp);
+	// 	ether.setPayload(ip);
 
-		this.sendPacket(ether, bestMatch.getInterface());
-	}
+	// 	this.sendPacket(ether, bestMatch.getInterface());
+	// }
 	
 	private final int rip_request = 1;
 	private final int rip_unsol = 2;
@@ -443,7 +445,8 @@ public class Router extends Device
 		if (0 == ipPacket.getTtl())
 		{
 			// time exceeded
-			this.ICMPMessage(etherPacket, inIface, (byte) 11, (byte) 0, true);
+			System.out.println("time exceeded");
+			this.ICMPMessage(etherPacket, inIface, (byte) 11, (byte) 0, false);
 			return;
 		}
 
@@ -459,6 +462,7 @@ public class Router extends Device
 				// Check headers after IP headers
 				if(protocol == IPv4.PROTOCOL_TCP || protocol == IPv4.PROTOCOL_UDP) 
 				{
+					System.out.println("destination port unreachable");
 					ICMPMessage(etherPacket, inIface, (byte) 3, (byte) 3, false);
 				} 
 				else if (protocol == IPv4.PROTOCOL_ICMP) 
@@ -466,7 +470,8 @@ public class Router extends Device
 					ICMP icmpPacket = (ICMP) ipPacket.getPayload();
 					if(icmpPacket.getIcmpType() == ICMP.TYPE_ECHO_REQUEST) 
 					{
-						echoReply(etherPacket, inIface);
+						System.out.println("echo reply");
+						ICMPMessage(etherPacket, inIface, (byte)0, (byte)0, true);;
 					}
 				}
 				return; }
@@ -494,6 +499,7 @@ public class Router extends Device
 		if (null == bestMatch)
 		{ 
 			// destination network unreachable
+			System.out.println("no route matched");
 			this.ICMPMessage(etherPacket, inIface, (byte) 3, (byte) 0, false);
 			return;
 		 }
@@ -516,6 +522,7 @@ public class Router extends Device
 		if (null == arpEntry)
 		{ 
 			// destination host unreachable
+			System.out.println("destination host unreachable");
 			this.ICMPMessage(etherPacket, inIface, (byte) 3, (byte) 1, false);
 			return; 
 		}
