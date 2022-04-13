@@ -482,10 +482,6 @@ public class Router extends Device
 		// 		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
 		// 		ip.setDestinationAddress(ipPacket.getSourceAddress());
 		// }
-
-		// prepare rip
-		RIPv2 rip = new RIPv2();
-		rip.setCommand(type);
 		// switch(type){
 		// 	case rip_request:
 		// 		rip.setCommand(RIPv2.COMMAND_REQUEST);
@@ -508,6 +504,8 @@ public class Router extends Device
 
 		// prepare ether packet payload
 		// List<RIPv2Entry> entries = new ArrayList<RIPv2Entry>();
+		// prepare rip
+		RIPv2 rip = new RIPv2();
 		synchronized(this.distanceVectorTable)
 		{
 			for (DVEntry entry: this.distanceVectorTable.DVs)
@@ -519,7 +517,7 @@ public class Router extends Device
 				rip.addEntry(new_entry);
 			}
 		}
-
+		rip.setCommand(type);
 		// prepare udp header
 		UDP udp = new UDP();
 		udp.setSourcePort(UDP.RIP_PORT);
@@ -532,15 +530,15 @@ public class Router extends Device
 			ip.setTtl((byte)15); //TODO:64/15??
 			ip.setProtocol(IPv4.PROTOCOL_UDP);
 			ip.setSourceAddress(entry.getValue().getIpAddress());
-			switch(type){
-				case rip_request:
-					ip.setDestinationAddress("224.0.0.9");
-				case rip_unsol:
-					ip.setDestinationAddress("224.0.0.9");
-				// case rip_response:
-				// 	IPv4 ipPacket = (IPv4)etherPacket.getPayload();
-				// 	ip.setDestinationAddress(ipPacket.getSourceAddress());
-			}
+			// switch(type){
+			// 	case rip_request:
+			ip.setDestinationAddress("224.0.0.9");
+			// 	case rip_unsol:
+			// 		ip.setDestinationAddress("224.0.0.9");
+			// 	// case rip_response:
+			// 	// 	IPv4 ipPacket = (IPv4)etherPacket.getPayload();
+			// 	// 	ip.setDestinationAddress(ipPacket.getSourceAddress());
+			// }
 			ip.setPayload(udp);
 
 			// prepare ether header
@@ -563,10 +561,7 @@ public class Router extends Device
 
 	public void sendRipUni(byte type, int sourceip, MACAddress srcmac, Iface inIface){
 		RIPv2 rip = new RIPv2();
-		rip.setCommand(type);
-		synchronized(this.distanceVectorTable)
-		{
-			for (DVEntry entry: this.distanceVectorTable.DVs)
+		for (DVEntry entry: this.distanceVectorTable.DVs)
 			{
 				RouteEntry re = this.routeTable.lookup(entry.addr);
 				RIPv2Entry new_entry = new RIPv2Entry(re.getDestinationAddress(), re.getMaskAddress(), entry.metric);
@@ -574,7 +569,7 @@ public class Router extends Device
 				// entries.add(new_entry);
 				rip.addEntry(new_entry);
 			}
-		}
+		rip.setCommand(type);
 
 		// prepare udp header
 		UDP udp = new UDP();
