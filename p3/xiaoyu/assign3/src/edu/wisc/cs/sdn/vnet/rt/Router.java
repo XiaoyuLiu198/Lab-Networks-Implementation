@@ -17,7 +17,6 @@ import net.floodlightcontroller.packet.RIPv2;
 import net.floodlightcontroller.packet.RIPv2Entry;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packet.ICMP;
-import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.Data;
 
 /**
@@ -150,7 +149,7 @@ public class Router extends Device
 		ip.setTtl((byte) 64); // set ttl
 		ip.setProtocol((byte) IPv4.PROTOCOL_ICMP); // set protocol
 		byte[] inData;
-		if (Echo == true){
+		if (Echo == false){
 			ip.setSourceAddress(ipPacket.getSourceAddress()); // set source ip
 			byte[] oriIpHeaderPayload = ipPacket.serialize();
 			int ipHeaderLen = ipPacket.getHeaderLength()*4;
