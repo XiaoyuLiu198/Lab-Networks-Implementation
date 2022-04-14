@@ -121,73 +121,73 @@ public class Router extends Device
 		/********************************************************************/
 		/* TODO: Handle packets                                             */
 
-		switch(etherPacket.getEtherType())
+		// switch(etherPacket.getEtherType())
+		// {
+		// case Ethernet.TYPE_IPv4:
+		
+		IPv4 ip = (IPv4)etherPacket.getPayload();
+		if (IPv4.toIPv4Address("224.0.0.9") == ip.getDestinationAddress())
 		{
-		case Ethernet.TYPE_IPv4:
-			IPv4 ip = (IPv4)etherPacket.getPayload();
-			if (IPv4.toIPv4Address("224.0.0.9") == ip.getDestinationAddress())
+			if (IPv4.PROTOCOL_UDP == ip.getProtocol()) 
 			{
-				if (IPv4.PROTOCOL_UDP == ip.getProtocol()) 
-				{
-					UDP udp = (UDP)ip.getPayload();
-					if (UDP.RIP_PORT == udp.getDestinationPort())
-					{ 
-						RIPv2 rip = (RIPv2)udp.getPayload();
-						this.handleRipPacket(rip, ip, inIface, false, false);
-					}
-					else{
-						boolean routerip = false;
-						for(Map.Entry<String, Iface> entry: interfaces.entrySet()){
-							if(ip.getDestinationAddress() == entry.getValue().getIpAddress()){
-								routerip = true;
-								break;
-							}
+				UDP udp = (UDP)ip.getPayload();
+				if (UDP.RIP_PORT == udp.getDestinationPort())
+				{ 
+					RIPv2 rip = (RIPv2)udp.getPayload();
+					this.handleRipPacket(rip, ip, inIface, false, false);
+				}
+				else{
+					boolean routerip = false;
+					for(Map.Entry<String, Iface> entry: interfaces.entrySet()){
+						if(ip.getDestinationAddress() == entry.getValue().getIpAddress()){
+							routerip = true;
+							break;
 						}
-						if(routerip == true){
-							boolean match = false;
-							boolean updatedDistance = false;
-							RIPv2 rip = (RIPv2)udp.getPayload();
-							synchronized(this.distanceVectorTable){
-								for (RIPv2Entry entry: rip.getEntries()){
-									match = false;
-									for(DVEntry dv: distanceVectorTable.DVs){
-											if(dv.addr == entry.getAddress()){
-												dv.timestamp = System.currentTimeMillis();
-												match = true;
-												if(dv.metric > (entry.getMetric() + 1)){
-													updatedDistance = true;
-													dv.metric = entry.getMetric() + 1;
-													routeTable.update(dv.addr, entry.getSubnetMask(), ip.getSourceAddress(), inIface);
-												}
+					}
+					if(routerip == true){
+						boolean match = false;
+						boolean updatedDistance = false;
+						RIPv2 rip = (RIPv2)udp.getPayload();
+						synchronized(this.distanceVectorTable){
+							for (RIPv2Entry entry: rip.getEntries()){
+								match = false;
+								for(DVEntry dv: distanceVectorTable.DVs){
+										if(dv.addr == entry.getAddress()){
+											dv.timestamp = System.currentTimeMillis();
+											match = true;
+											if(dv.metric > (entry.getMetric() + 1)){
+												updatedDistance = true;
+												dv.metric = entry.getMetric() + 1;
+												routeTable.update(dv.addr, entry.getSubnetMask(), ip.getSourceAddress(), inIface);
 											}
 										}
-									if(match == false){
-										updatedDistance = true;
-										DVEntry newDVEntry = new DVEntry(entry.getAddress(), entry.getMetric()+1, 1);
-										distanceVectorTable.addtoDVs(newDVEntry);
-										DVEntryTO TO = new DVEntryTO(newDVEntry);
-										Thread TOThread = new Thread(TO);
-										TOThread.start();
-										routeTable.insert(entry.getAddress(), ip.getSourceAddress(), entry.getSubnetMask(), inIface);
 									}
+								if(match == false){
+									updatedDistance = true;
+									DVEntry newDVEntry = new DVEntry(entry.getAddress(), entry.getMetric()+1, 1);
+									distanceVectorTable.addtoDVs(newDVEntry);
+									DVEntryTO TO = new DVEntryTO(newDVEntry);
+									Thread TOThread = new Thread(TO);
+									TOThread.start();
+									routeTable.insert(entry.getAddress(), ip.getSourceAddress(), entry.getSubnetMask(), inIface);
 								}
 							}
-							if(updatedDistance == true){
-								sendRip((byte)2);
-							}
-							return;
 						}
+						if(updatedDistance == true){
+							sendRip((byte)2);
+						}
+						return;
 					}
 				}
 			}
+		}
 
-			this.handleIpPacket(etherPacket, inIface);
-			break;
+		this.handleIpPacket(etherPacket, inIface);
 		// Ignore all other packet types, for now
 		}
 
 		/********************************************************************/
-	}
+	
 
 	private void ICMPMessage(IPv4 pkt, Iface inIface, byte type, byte code, boolean Echo){
 		// IPv4 ipPacket = (IPv4)etherPacket.getPayload();
@@ -681,23 +681,21 @@ public class Router extends Device
 		// int broadcastAddr = ipPacket.toIPv4Address("224.0.0.9");
 		System.out.println("Handle IP packet");
 
-		if(ipPacket.getProtocol() == IPv4.PROTOCOL_UDP){
-
-		}
-
 		// Verify checksum
 		short origCksum = ipPacket.getChecksum();
 		ipPacket.resetChecksum();
-		byte[] serialized = ipPacket.serialize();
+		// byte[] serialized = ipPacket.serialize();
 		ipPacket.serialize();
-		ipPacket.deserialize(serialized, 0, serialized.length);
+		// ipPacket.deserialize(serialized, 0, serialized.length);
 		short calcCksum = ipPacket.getChecksum();
 		if (origCksum != calcCksum)
 		{ return; }
 
 		// Check TTL
+		byte current = ipPacket.getTtl();
+		current--;
 		ipPacket.setTtl((byte)(ipPacket.getTtl()-1));
-		if (0 == ipPacket.getTtl())
+		if (0 == current)
 		{
 			// time exceeded
 			System.out.println("time exceeded");
@@ -706,8 +704,9 @@ public class Router extends Device
 		}
 
 		// Reset checksum now that TTL is decremented
+		ipPacket.setTtl(current);
 		ipPacket.resetChecksum();
-		// ipPacket.serialize(); //TODO: Serialize or not
+		ipPacket.serialize(); //TODO: Serialize or not
 
 		// Check if packet is destined for one of router's interfaces
 		for (Iface iface : this.interfaces.values())
