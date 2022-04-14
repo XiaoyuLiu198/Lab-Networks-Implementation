@@ -28,7 +28,8 @@ public class Router extends Device
 	private ArpCache arpCache;
 
 	/** ARP Request Table */
-	// private ARPRequestTable arpReqTable;###########################
+	private ARPRequestTable arpReqTable;
+	// ###########################
 
 	/** Distance Vector Table */
 	public class DVTable
@@ -543,50 +544,118 @@ public class Router extends Device
 		return ae.getMac();
 	}
 
-	/* ARP Reply */
-	public void sendARPReply(Ethernet inEtherPkt, ARP inArpPkt, Iface inIface) {
-		Ethernet ether = new Ethernet();
-		ARP arpPkt = new ARP();
+	// /* ARP Reply */
+	// public void sendARPReply(Ethernet inEtherPkt, ARP inArpPkt, Iface inIface) {
+	// 	Ethernet ether = new Ethernet();
+	// 	ARP arpPkt = new ARP();
 
-		/* Construct Ethernet header */
-		ether.setEtherType(Ethernet.TYPE_ARP);
-		ether.setSourceMACAddress(inIface.getMacAddress().toString());
-		ether.setDestinationMACAddress(inEtherPkt.getSourceMACAddress());
+	// 	/* Construct Ethernet header */
+	// 	ether.setEtherType(Ethernet.TYPE_ARP);
+	// 	ether.setSourceMACAddress(inIface.getMacAddress().toString());
+	// 	ether.setDestinationMACAddress(inEtherPkt.getSourceMACAddress());
 
-		/* ARP Header */
-		arpPkt.setHardwareType(ARP.HW_TYPE_ETHERNET);
-		arpPkt.setProtocolType(ARP.PROTO_TYPE_IP);
-		arpPkt.setHardwareAddressLength((byte)Ethernet.DATALAYER_ADDRESS_LENGTH);
-		arpPkt.setProtocolAddressLength((byte)4);
-		arpPkt.setOpCode(ARP.OP_REPLY);
-		arpPkt.setSenderHardwareAddress(inIface.getMacAddress().toBytes());
-		arpPkt.setSenderProtocolAddress(inIface.getIpAddress());
-		arpPkt.setTargetHardwareAddress(inArpPkt.getSenderHardwareAddress());
-		arpPkt.setTargetProtocolAddress(inArpPkt.getSenderProtocolAddress());
+	// 	/* ARP Header */
+	// 	arpPkt.setHardwareType(ARP.HW_TYPE_ETHERNET);
+	// 	arpPkt.setProtocolType(ARP.PROTO_TYPE_IP);
+	// 	arpPkt.setHardwareAddressLength((byte)Ethernet.DATALAYER_ADDRESS_LENGTH);
+	// 	arpPkt.setProtocolAddressLength((byte)4);
+	// 	arpPkt.setOpCode(ARP.OP_REPLY);
+	// 	arpPkt.setSenderHardwareAddress(inIface.getMacAddress().toBytes());
+	// 	arpPkt.setSenderProtocolAddress(inIface.getIpAddress());
+	// 	arpPkt.setTargetHardwareAddress(inArpPkt.getSenderHardwareAddress());
+	// 	arpPkt.setTargetProtocolAddress(inArpPkt.getSenderProtocolAddress());
 
-		/* Set Ethernet Payload */
-		ether.setPayload(arpPkt);
-		/* Send ARP Reply */
-		sendPacket(ether, inIface);
+	// 	/* Set Ethernet Payload */
+	// 	ether.setPayload(arpPkt);
+	// 	/* Send ARP Reply */
+	// 	sendPacket(ether, inIface);
+	// }
+
+	class EthernetPktInfo {
+		Ethernet pkt;
+		Iface inIface;
+	
+		public EthernetPktInfo(Ethernet pkt, Iface inIface) {
+			this.pkt = pkt;
+			this.inIface = inIface;
+		}
+	}
+	
+	public class ARPRequestEntry {
+		int IPAddress;
+		Queue<EthernetPktInfo> etherPktQ;
+		Iface outIface;
+	
+		/* Initial Value : 3
+		 * When ARP request send : value--
+		 * When ARP reply recieved : -1
+		*/
+		int nTry;
+		MACAddress destinationMAC;
+	
+		public ARPRequestEntry(int IP, Ethernet pkt, Iface outIface, Iface inIface) {
+			this.IPAddress = IP;
+			this.etherPktQ = new LinkedList<EthernetPktInfo>();
+			EthernetPktInfo infoNode = new EthernetPktInfo(pkt, inIface);
+			this.etherPktQ.add(infoNode);
+			this.outIface = outIface;
+			this.nTry = 3;
+			this.destinationMAC = null;
+		}
+	
+		public void addPacketQueue(Ethernet pkt, Iface outIface, Iface inIface) {
+			synchronized(this) {
+				EthernetPktInfo infoNode = new EthernetPktInfo(pkt, inIface);
+				this.etherPktQ.add(infoNode);
+				Iterator<EthernetPktInfo> itr = etherPktQ.iterator();
+				while (itr.hasNext()) {
+					EthernetPktInfo e = itr.next();
+					IPv4 pkt1 = (IPv4)e.pkt.getPayload();
+				}
+			}
+		}
+	
+		public void invalidateARPRequestEntry(MACAddress destinationMAC) {
+			synchronized(this) {
+				this.nTry = -1;
+				this.destinationMAC = destinationMAC;
+			}
+		}
+	}
+
+	public class ARPRequestTable {
+		ArrayList<ARPRequestEntry> ARPRequestTab;
+	
+		public ARPRequestTable() {
+			ARPRequestTab = new ArrayList<ARPRequestEntry>();
+		}
+	
+		public ARPRequestEntry newARPRequest(int IP, Ethernet pkt, Iface inIface, Iface outIface) {
+			synchronized(this.ARPRequestTab) {
+				ARPRequestEntry entry = new ARPRequestEntry(IP, pkt, outIface, inIface);
+				ARPRequestTab.add(entry);
+				return entry;
+			}
+		}
 	}
 
 
-	// public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
-	// 	ARPRequestEntry entry;
-	// 	synchronized(arpReqTable) {
-	// 	for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
-	// 		if(ARE.IPAddress == IP) {
-	// 			ARE.addPacketQueue(etherPacket, outIface, inIface);
-	// 			return;
-	// 		}
-	// 	}
+	public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
+		ARPRequestEntry entry;
+		synchronized(arpReqTable) {
+		for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
+			if(ARE.IPAddress == IP) {
+				ARE.addPacketQueue(etherPacket, outIface, inIface);
+				return;
+			}
+		}
 
-	// 	entry = arpReqTable.newARPRequest(IP, etherPacket, inIface, outIface);
-	// 	}
-	// 	EntryThreadImpl obj = new EntryThreadImpl(entry);
-	// 	Thread t = new Thread(obj);
-	// 	t.start();
-	// }
+		entry = arpReqTable.newARPRequest(IP, etherPacket, inIface, outIface);
+		}
+		EntryThreadImpl obj = new EntryThreadImpl(entry);
+		Thread t = new Thread(obj);
+		t.start();
+	}
 
 	// public void sendARPRequestPacket(int IPAddress, Iface outIface, EthernetPktInfo p1) {
 	// 	Ethernet ether = new Ethernet();
@@ -685,32 +754,32 @@ public class Router extends Device
 	}
 
 
-	// class EntryThreadImpl implements Runnable {
-	// 	ARPRequestEntry entry;
+	class EntryThreadImpl implements Runnable {
+		ARPRequestEntry entry;
 
-	// 	public EntryThreadImpl(ARPRequestEntry entry) {
-	// 		this.entry = entry;
-	// 	}
+		public EntryThreadImpl(ARPRequestEntry entry) {
+			this.entry = entry;
+		}
 
-	// 	public void run() {
-	// 		while(true) {
-	// 			if(this.entry.nTry <= 0)
-	// 				break;
+		public void run() {
+			while(true) {
+				if(this.entry.nTry <= 0)
+					break;
 
-	// 			synchronized(this.entry) {
-	// 				sendARPRequestPacket(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktQ.peek());
-	// 			}
-	// 			try {
-	// 				Thread.sleep(1000);
-	// 			} catch(Exception e) {
-	// 				System.out.println(e);
-	// 			}
-	// 			synchronized(this.entry) {
-	// 				this.entry.nTry--;
-	// 			}
-	// 		}
-	// 	}
-	// }
+				// synchronized(this.entry) {
+				// 	sendARPRequestPacket(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktQ.peek());
+				// }
+				try {
+					Thread.sleep(1000);
+				} catch(Exception e) {
+					System.out.println(e);
+				}
+				synchronized(this.entry) {
+					this.entry.nTry--;
+				}
+			}
+		}
+	}
 
 	// class TableThreadImpl implements Runnable {
 	// 	ARPRequestTable table;
