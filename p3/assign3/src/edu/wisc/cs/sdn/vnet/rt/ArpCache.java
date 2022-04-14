@@ -16,17 +16,16 @@ import net.floodlightcontroller.packet.MACAddress;
  * A cache of MAC address to IP address mappings.
  * @author Aaron Gember-Jacobson
  */
-public class ArpCache
-{
+public class ArpCache {
 	/** Entries in the cache; maps an IP address to an entry */
 	private Map<Integer,ArpEntry> entries;
-	
+
 	/**
 	 * Initializes an empty ARP cache for a router.
 	 */
 	public ArpCache()
 	{ this.entries = new ConcurrentHashMap<Integer,ArpEntry>(); }
-	
+
 	/**
 	 * Insert an entry in the ARP cache for a specific IP address, MAC address
 	 * pair.
@@ -35,7 +34,7 @@ public class ArpCache
 	 */
 	public void insert(MACAddress mac, int ip)
 	{ this.entries.put(ip, new ArpEntry(mac, ip)); }
-	
+
 	/**
 	 * Checks if an IP->MAC mapping is the in the cache.
 	 * @param ip IP address whose MAC address is desired
@@ -43,7 +42,7 @@ public class ArpCache
 	 */
 	public ArpEntry lookup(int ip)
 	{ return this.entries.get(ip); }
-	
+
 	/**
 	 * Populate the ARP cache from a file.
 	 * @param filename name of the file containing the static route table
@@ -64,7 +63,7 @@ public class ArpCache
 			System.err.println(e.toString());
 			return false;
 		}
-		
+
 		while (true)
 		{
 			// Read an ARP entry from the file
@@ -77,18 +76,17 @@ public class ArpCache
 				try { reader.close(); } catch (IOException f) {};
 				return false;
 			}
-			
+
 			// Stop if we have reached the end of the file
 			if (null == line)
 			{ break; }
-			
+
 			// Parse fields for ARP entry
 			String ipPattern = "(\\d+\\.\\d+\\.\\d+\\.\\d+)";
 			String macByte = "[a-fA-F0-9]{2}";
 			String macPattern = "("+macByte+":"+macByte+":"+macByte
 					+":"+macByte+":"+macByte+":"+macByte+")";
-			Pattern pattern = Pattern.compile(String.format(
-					"%s\\s+%s", ipPattern, macPattern));
+			Pattern pattern = Pattern.compile(String.format("%s\\s+%s", ipPattern, macPattern));
 			Matcher matcher = pattern.matcher(line);
 			if (!matcher.matches() || matcher.groupCount() != 2)
 			{
@@ -105,7 +103,7 @@ public class ArpCache
 				try { reader.close(); } catch (IOException f) {};
 				return false;
 			}
-			
+
 			MACAddress mac = null;
 			try
 			{ mac = MACAddress.valueOf(matcher.group(2)); }
@@ -116,23 +114,21 @@ public class ArpCache
 				try { reader.close(); } catch (IOException f) {};
 				return false;
 			}
-			
+
 			// Add an entry to the ACP cache
 			this.insert(mac, ip);
 		}
-	
+
 		// Close the file
 		try { reader.close(); } catch (IOException f) {};
 		return true;
 	}
-	
+
 	public String toString()
 	{
 		String result = "IP\t\tMAC\n";
 		for (ArpEntry entry : this.entries.values())
-		{
-			result += entry.toString()+"\n";
-		}
+		{ result += entry.toString()+"\n"; }
 		return result;
 	}
 }

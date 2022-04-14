@@ -12,7 +12,7 @@ public class Iface
 	private String name;
 	private MACAddress macAddress;
 	private int ipAddress;
-	private int subnetMask;
+    private int subnetMask;
 	
 	public Iface(String name)
 	{
@@ -36,7 +36,7 @@ public class Iface
 	public int getIpAddress()
 	{ return this.ipAddress; }
 	
-	public void setSubnetMask(int subnetMask)
+    public void setSubnetMask(int subnetMask)
 	{ this.subnetMask = subnetMask; }
 	
 	public int getSubnetMask()
@@ -52,7 +52,7 @@ public class Iface
 			return String.format("%s\tHWaddr %s\n\tinet addr:%s Mask:%s",
 					this.name, this.macAddress.toString(), 
 					IPv4.fromIPv4Address(this.ipAddress),
-					IPv4.fromIPv4Address(this.subnetMask));
+	                IPv4.fromIPv4Address(this.subnetMask));
 		}
 	}
 }
