@@ -21,13 +21,20 @@ public class RouteTable
 {
 	/** Entries in the route table */
 	private List<RouteEntry> entries; 
-	
+
 	/**
 	 * Initialize an empty route table.
 	 */
 	public RouteTable()
 	{ this.entries = new LinkedList<RouteEntry>(); }
-	
+
+	/**
+	* Retrieve the entries in the route table
+	 */
+	public List<RouteEntry> getEntries() {
+		return this.entries;
+	}
+
 	/**
 	 * Lookup the route entry that matches a given IP address.
 	 * @param ip IP address
@@ -36,30 +43,27 @@ public class RouteTable
 	public RouteEntry lookup(int ip)
 	{
 		synchronized(this.entries)
-        {
+		{
 			/*****************************************************************/
 			/* TODO: Find the route entry with the longest prefix match      */
-			
-	        RouteEntry bestMatch = null;
-	        for (RouteEntry entry : this.entries)
-	        {
-	           int maskedDst = ip & entry.getMaskAddress();
-	           int entrySubnet = entry.getDestinationAddress() 
-	               & entry.getMaskAddress();
-	           if (maskedDst == entrySubnet)
-	           {
-	        	   if ((null == bestMatch) 
-	        		   || (entry.getMaskAddress() > bestMatch.getMaskAddress()))
-	        	   { bestMatch = entry; }
-	           }
-	        }
-			
+
+			RouteEntry bestMatch = null;
+			for (RouteEntry entry : this.entries)
+			{
+				int maskedDst = ip & entry.getMaskAddress();
+				int entrySubnet = entry.getDestinationAddress() & entry.getMaskAddress();
+				if (maskedDst == entrySubnet) {
+					if ((null == bestMatch) || (entry.getMaskAddress() > bestMatch.getMaskAddress()))
+					{ bestMatch = entry; }
+				}
+			}
+
 			return bestMatch;
-			
+
 			/*****************************************************************/
-        }
+		}
 	}
-	
+
 	/**
 	 * Populate the route table from a file.
 	 * @param filename name of the file containing the static route table
@@ -80,7 +84,7 @@ public class RouteTable
 			System.err.println(e.toString());
 			return false;
 		}
-		
+
 		while (true)
 		{
 			// Read a route entry from the file
@@ -93,17 +97,17 @@ public class RouteTable
 				try { reader.close(); } catch (IOException f) {};
 				return false;
 			}
-			
+
 			// Stop if we have reached the end of the file
 			if (null == line)
 			{ break; }
-			
+
 			// Parse fields for route entry
 			String ipPattern = "(\\d+\\.\\d+\\.\\d+\\.\\d+)";
 			String ifacePattern = "([a-zA-Z0-9]+)";
 			Pattern pattern = Pattern.compile(String.format(
-                        "%s\\s+%s\\s+%s\\s+%s", 
-                        ipPattern, ipPattern, ipPattern, ifacePattern));
+						"%s\\s+%s\\s+%s\\s+%s", 
+						ipPattern, ipPattern, ipPattern, ifacePattern));
 			Matcher matcher = pattern.matcher(line);
 			if (!matcher.matches() || matcher.groupCount() != 4)
 			{
@@ -120,9 +124,9 @@ public class RouteTable
 				try { reader.close(); } catch (IOException f) {};
 				return false;
 			}
-			
+
 			int gwIp = IPv4.toIPv4Address(matcher.group(2));
-			
+
 			int maskIp = IPv4.toIPv4Address(matcher.group(3));
 			if (0 == maskIp)
 			{
@@ -131,7 +135,7 @@ public class RouteTable
 				try { reader.close(); } catch (IOException f) {};
 				return false;
 			}
-			
+
 			String ifaceName = matcher.group(4).trim();
 			Iface iface = router.getInterface(ifaceName);
 			if (null == iface)
@@ -141,16 +145,16 @@ public class RouteTable
 				try { reader.close(); } catch (IOException f) {};
 				return false;
 			}
-			
+
 			// Add an entry to the route table
-			this.insert(dstIp, gwIp, maskIp, iface);
+			this.insert(dstIp, gwIp, maskIp, iface, 1, System.currentTimeMillis());
 		}
-	
+
 		// Close the file
 		try { reader.close(); } catch (IOException f) {};
 		return true;
 	}
-	
+
 	/**
 	 * Add an entry to the route table.
 	 * @param dstIp destination IP
@@ -159,86 +163,87 @@ public class RouteTable
 	 * @param iface router interface out which to send packets to reach the 
 	 *        destination or gateway
 	 */
-	public void insert(int dstIp, int gwIp, int maskIp, Iface iface)
+	public void insert(int dstIp, int gwIp, int maskIp, Iface iface, int metric, long timestamp)
 	{
-		RouteEntry entry = new RouteEntry(dstIp, gwIp, maskIp, iface);
-        synchronized(this.entries)
-        { 
-            this.entries.add(entry);
-        }
+		RouteEntry entry = new RouteEntry(dstIp, gwIp, maskIp, iface, metric);
+		synchronized(this.entries)
+		{ 
+			this.entries.add(entry);
+		}
 	}
-	
+
 	/**
 	 * Remove an entry from the route table.
 	 * @param dstIP destination IP of the entry to remove
-     * @param maskIp subnet mask of the entry to remove
-     * @return true if a matching entry was found and removed, otherwise false
+	 * @param maskIp subnet mask of the entry to remove
+	 * @return true if a matching entry was found and removed, otherwise false
 	 */
 	public boolean remove(int dstIp, int maskIp)
 	{ 
-        synchronized(this.entries)
-        {
-            RouteEntry entry = this.find(dstIp, maskIp);
-            if (null == entry)
-            { return false; }
-            this.entries.remove(entry);
-        }
-        return true;
-    }
-	
+		synchronized(this.entries)
+		{
+			RouteEntry entry = this.find(dstIp, maskIp);
+			if (null == entry) { return false; }
+			this.entries.remove(entry);
+		}
+		return true;
+	}
+
 	/**
 	 * Update an entry in the route table.
 	 * @param dstIP destination IP of the entry to update
-     * @param maskIp subnet mask of the entry to update
+	 * @param maskIp subnet mask of the entry to update
 	 * @param gatewayAddress new gateway IP address for matching entry
 	 * @param iface new router interface for matching entry
-     * @return true if a matching entry was found and updated, otherwise false
+	 * @param metric number of hops to get to this destination (only applies to RIP)
+	 * @param timestamp when the route entry was last updated (only applies to RIP)
+	 * @return true if a matching entry was found and updated, otherwise false
 	 */
-	public boolean update(int dstIp, int maskIp, int gwIp, 
-            Iface iface)
+	public boolean update(int dstIp, int maskIp, int gwIp, Iface iface, int metric, long timestamp)
 	{
-        synchronized(this.entries)
-        {
-            RouteEntry entry = this.find(dstIp, maskIp);
-            if (null == entry)
-            { return false; }
-            entry.setGatewayAddress(gwIp);
-            entry.setInterface(iface);
-        }
-        return true;
+		synchronized(this.entries)
+		{
+			RouteEntry entry = this.find(dstIp, maskIp);
+			if (null == entry) { return false; }
+			entry.setGatewayAddress(gwIp);
+			entry.setInterface(iface);
+			entry.setMetric(metric);
+			entry.setLastUpdateTimestamp(timestamp);
+		}
+		return true;
 	}
 
-    /**
+	/**
 	 * Find an entry in the route table.
 	 * @param dstIP destination IP of the entry to find
-     * @param maskIp subnet mask of the entry to find
-     * @return a matching entry if one was found, otherwise null
+	 * @param maskIp subnet mask of the entry to find
+	 * @return a matching entry if one was found, otherwise null
 	 */
-    private RouteEntry find(int dstIp, int maskIp)
-    {
-        synchronized(this.entries)
-        {
-            for (RouteEntry entry : this.entries)
-            {
-                if ((entry.getDestinationAddress() == dstIp)
-                    && (entry.getMaskAddress() == maskIp)) 
-                { return entry; }
-            }
-        }
-        return null;
-    }
-	
+	public RouteEntry find(int dstIp, int maskIp)
+	{
+		synchronized(this.entries)
+		{
+			for (RouteEntry entry : this.entries)
+			{
+				if ((entry.getDestinationAddress() == dstIp)
+					&& (entry.getMaskAddress() == maskIp)) 
+				{ return entry; }
+			}
+		}
+		return null;
+	}
+
 	public String toString()
 	{
-        synchronized(this.entries)
-        { 
-            if (0 == this.entries.size())
-            { return " WARNING: route table empty"; }
-            
-            String result = "Destination\tGateway\t\tMask\t\tIface\n";
-            for (RouteEntry entry : entries)
-            { result += entry.toString()+"\n"; }
-		    return result;
-        }
+		synchronized(this.entries)
+		{ 
+			if (0 == this.entries.size())
+			{ return " WARNING: route table empty"; }
+
+			String result = "Destination\tGateway\t\tMask\t\tIface\tMetric\tTimestamp\n";
+			for (RouteEntry entry : entries)
+			{ result += entry.toString()+"\n"; }
+			return result;
+		}
 	}
 }
