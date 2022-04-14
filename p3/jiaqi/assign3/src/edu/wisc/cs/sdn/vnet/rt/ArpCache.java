@@ -17,7 +17,7 @@ import net.floodlightcontroller.packet.MACAddress;
  * @author Aaron Gember-Jacobson
  */
 public class ArpCache
-{		
+{
 	/** Entries in the cache; maps an IP address to an entry */
 	private Map<Integer,ArpEntry> entries;
 	
@@ -88,7 +88,7 @@ public class ArpCache
 			String macPattern = "("+macByte+":"+macByte+":"+macByte
 					+":"+macByte+":"+macByte+":"+macByte+")";
 			Pattern pattern = Pattern.compile(String.format(
-                        "%s\\s+%s", ipPattern, macPattern));
+					"%s\\s+%s", ipPattern, macPattern));
 			Matcher matcher = pattern.matcher(line);
 			if (!matcher.matches() || matcher.groupCount() != 2)
 			{
@@ -128,9 +128,11 @@ public class ArpCache
 	
 	public String toString()
 	{
-        String result = "IP\t\tMAC\n";
-        for (ArpEntry entry : this.entries.values())
-        { result += entry.toString()+"\n"; }
-	    return result;
+		String result = "IP\t\tMAC\n";
+		for (ArpEntry entry : this.entries.values())
+		{
+			result += entry.toString()+"\n";
+		}
+		return result;
 	}
 }

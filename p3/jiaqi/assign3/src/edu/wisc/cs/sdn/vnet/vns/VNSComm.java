@@ -55,7 +55,7 @@ public class VNSComm
 		{
 			OutputStream outStream = socket.getOutputStream();
 			outStream.write(buf);
-            outStream.flush();
+			outStream.flush();
 		}
 		catch(IOException e)
 		{
@@ -75,7 +75,7 @@ public class VNSComm
 			{
 			case CommandHwEntry.HW_INTERFACE:
 				lastIface = this.device.addInterface(
-                        new String(hwEntry.value).trim());
+						new String(hwEntry.value).trim());
 				break;
 			case CommandHwEntry.HW_MASK:
 				lastIface.setSubnetMask(ByteBuffer.wrap(hwEntry.value).getInt());
@@ -194,8 +194,8 @@ public class VNSComm
 			cmdPkt.deserialize(buf);
 			
 			// Log packet
-            if (this.device.getLogFile() != null)
-            { this.device.getLogFile().dump(cmdPkt.etherPacket); }
+			if (this.device.getLogFile() != null)
+			{ this.device.getLogFile().dump(cmdPkt.etherPacket); }
 			
 			// Pass to device, student's code should take over here
 			this.device.handlePacket(cmdPkt.etherPacket, 
@@ -257,14 +257,14 @@ public class VNSComm
 		}*/
 		
 		// Log packet
-        if (this.device.getLogFile() != null)
-        { this.device.getLogFile().dump(etherPacket); }
+		if (this.device.getLogFile() != null)
+		{ this.device.getLogFile().dump(etherPacket); }
 		
-	    try
+		try
 		{
 			OutputStream outStream = socket.getOutputStream();
 			outStream.write(buf);
-            outStream.flush();
+			outStream.flush();
 		}
 		catch(IOException e)
 		{

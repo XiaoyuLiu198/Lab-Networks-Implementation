@@ -36,12 +36,12 @@ public abstract class Command
 	protected byte[] serialize()
 	{
 		byte[] data = new byte[8];
-        ByteBuffer bb = ByteBuffer.wrap(data);
-        
-        bb.putInt(this.mLen);
-        bb.putInt(this.mType);
-        
-        return data;
+		ByteBuffer bb = ByteBuffer.wrap(data);
+		
+		bb.putInt(this.mLen);
+		bb.putInt(this.mType);
+		
+		return data;
 	}
 	
 	protected int getSize()

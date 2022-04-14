@@ -64,8 +64,8 @@ public class DumpFile
 			this.outStream.writeInt(SIG_FIGS);
 			this.outStream.writeInt(SNAP_LEN);
 			this.outStream.writeInt(LINKTYPE_ETHERNET);
-	        this.outStream.flush();
-	        return true;
+			this.outStream.flush();
+			return true;
 		}
 		catch (IOException e)
 		{
