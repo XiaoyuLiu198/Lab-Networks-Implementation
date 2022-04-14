@@ -208,6 +208,7 @@ public class Router extends Device
 			System.out.println("Handle icmp data");
 			// ip.setSourceAddress(inIface.getIpAddress());
 			byte[] oriIpHeaderPayload = pkt.serialize();
+			System.out.println(oriIpHeaderPayload);
 			int i, j, k;
 			int ipHeaderLen = pkt.getHeaderLength()*4;
 			inData = new byte[4 + ipHeaderLen + 8];
