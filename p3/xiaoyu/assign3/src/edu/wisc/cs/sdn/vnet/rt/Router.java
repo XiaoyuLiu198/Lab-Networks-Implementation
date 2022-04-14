@@ -294,19 +294,28 @@ public class Router extends Device
 	public MACAddress findMACFromRTLookUp(int ip) {
 
 		RouteEntry rEntry = routeTable.lookup(ip);
+		System.out.println("res in routtable");
+		System.out.println(rEntry.toString());
 		if(rEntry == null) {
 			/* No matching route table entry */
+			System.out.println("route table null");
 			return null;
 		}
 		/* Find the next hop IP Address */
 		int nextHopIPAddress = rEntry.getGatewayAddress();
+		System.out.println("nexthop is:");
+		System.out.println(nextHopIPAddress);
 		if(nextHopIPAddress == 0){
+			System.out.println("next hop null");
 			nextHopIPAddress = ip;
 		}
 		/* Find the next hop MAC address from ARP Cache */
 		ArpEntry ae = arpCache.lookup(nextHopIPAddress);
+		System.out.println("nexthop arp  mac is:");
+		System.out.println(ae.toString());
 		if(ae == null) {
 			/* No such host in the network - Dropping */
+			System.out.println("arp null");
 			return null;
 		}
 		/* Next hop MAC addresses */
