@@ -25,16 +25,16 @@ public class CommandOpen extends Command
 	protected byte[] serialize()
 	{
 		byte[] data = new byte[this.getSize()];
-        ByteBuffer bb = ByteBuffer.wrap(data);
-        
-        byte[] parentData = super.serialize();
-        
-        bb.put(parentData);
-        byte[] tmp = new byte[Command.ID_SIZE];
-        System.arraycopy(this.mVirtualHostId.getBytes(), 0, tmp, 0, this.mVirtualHostId.length());
-        bb.put(tmp);
-        
-        return data;
+		ByteBuffer bb = ByteBuffer.wrap(data);
+		
+		byte[] parentData = super.serialize();
+		
+		bb.put(parentData);
+		byte[] tmp = new byte[Command.ID_SIZE];
+		System.arraycopy(this.mVirtualHostId.getBytes(), 0, tmp, 0, this.mVirtualHostId.length());
+		bb.put(tmp);
+		
+		return data;
 	}
 	
 	protected int getSize()
