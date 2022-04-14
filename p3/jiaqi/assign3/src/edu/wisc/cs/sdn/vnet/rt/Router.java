@@ -206,7 +206,7 @@ public class Router extends Device
 		if (Echo == false){
 			// ip.setSourceAddress(pkt.getSourceAddress()); // set source ip
 			System.out.println("Handle icmp data");
-			ip.setSourceAddress(inIface.getIpAddress());
+			// ip.setSourceAddress(inIface.getIpAddress());
 			byte[] oriIpHeaderPayload = pkt.serialize();
 			int i, j, k;
 			int ipHeaderLen = pkt.getHeaderLength()*4;
@@ -223,7 +223,7 @@ public class Router extends Device
 			}
 		}
 		else{
-			ip.setSourceAddress(pkt.getDestinationAddress());
+			// ip.setSourceAddress(pkt.getDestinationAddress());
 			inData = ((ICMP)pkt.getPayload()).getPayload().serialize();
 		}
 		data.setData(inData);
@@ -243,40 +243,75 @@ public class Router extends Device
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
 
-		int srcAddr = pkt.getSourceAddress(); // get destionation ip address
-		RouteEntry bestMatch = this.routeTable.lookup(srcAddr); // Find matching route table entry 
-		if (bestMatch == null){
-			System.out.println("No matched route entry found");
-			return;
-		}
-		// int nextHop = bestMatch.getInterface().getIpAddress();
-		int nextHop = bestMatch.getGatewayAddress();
-		if(nextHop == 0){
-			nextHop = srcAddr;
-		}
-		ArpEntry nextHopMac = arpCache.lookup(nextHop);
-		if(nextHopMac == null){
-			return;
-		}
-		MACAddress nextHopMacAddress = nextHopMac.getMac();
-		// ether.setSourceMACAddress(bestMatch.getInterface().getMacAddress().toBytes()); // update source MACaddress
-		if(nextHopMacAddress == null){
-			RouteEntry routeEntry = routeTable.lookup(pkt.getSourceAddress());
-			int nextHopIP = routeEntry.getGatewayAddress();
-			if(nextHopIP == 0){
-				nextHopIP = pkt.getSourceAddress();
+		// int srcAddr = pkt.getSourceAddress(); // get destionation ip address
+		// RouteEntry bestMatch = this.routeTable.lookup(srcAddr); // Find matching route table entry 
+		// if (bestMatch == null){
+		// 	System.out.println("No matched route entry found");
+		// 	return;
+		// }
+		// // int nextHop = bestMatch.getInterface().getIpAddress();
+		// int nextHop = bestMatch.getGatewayAddress();
+		// if(nextHop == 0){
+		// 	nextHop = srcAddr;
+		// }
+		// ArpEntry nextHopMac = arpCache.lookup(nextHop);
+		// if(nextHopMac == null){
+		// 	return;
+		// }
+		// MACAddress nextHopMacAddress = nextHopMac.getMac();
+		// // ether.setSourceMACAddress(bestMatch.getInterface().getMacAddress().toBytes()); // update source MACaddress
+		// if(nextHopMacAddress == null){
+		// 	RouteEntry routeEntry = routeTable.lookup(pkt.getSourceAddress());
+		// 	int nextHopIP = routeEntry.getGatewayAddress();
+		// 	if(nextHopIP == 0){
+		// 		nextHopIP = pkt.getSourceAddress();
+		// 	}
+		// 	// this.sendARPRequest(ether, inIface, inIface, nextHopIP);
+		// 	System.out.println("arp request?");
+		// 	return;
+		// }
+		MACAddress destMAC = findMACFromRTLookUp(pkt.getSourceAddress());
+		if(destMAC == null) {
+			RouteEntry rEntry = routeTable.lookup(pkt.getSourceAddress());
+			/* Find the next hop IP Address */
+			int nextHopIPAddress = rEntry.getGatewayAddress();
+			if(nextHopIPAddress == 0){
+				nextHopIPAddress = pkt.getSourceAddress();
 			}
-			// this.sendARPRequest(ether, inIface, inIface, nextHopIP);
-			System.out.println("arp request?");
+			System.out.println("no next hop");
+			// this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
 			return;
 		}
-		ether.setDestinationMACAddress(nextHopMacAddress.toString()); // update destination MACaddress
+		ether.setDestinationMACAddress(destMAC.toString()); // update destination MACaddress
 		// System.out.println("Handle ether packet header");
 		System.out.println("Combined");
 
 		this.sendPacket(ether, inIface);
 		System.out.println("sent");
 	}
+
+	public MACAddress findMACFromRTLookUp(int ip) {
+
+		RouteEntry rEntry = routeTable.lookup(ip);
+		if(rEntry == null) {
+			/* No matching route table entry */
+			return null;
+		}
+		/* Find the next hop IP Address */
+		int nextHopIPAddress = rEntry.getGatewayAddress();
+		if(nextHopIPAddress == 0){
+			nextHopIPAddress = ip;
+		}
+		/* Find the next hop MAC address from ARP Cache */
+		ArpEntry ae = arpCache.lookup(nextHopIPAddress);
+		if(ae == null) {
+			/* No such host in the network - Dropping */
+			return null;
+		}
+		/* Next hop MAC addresses */
+		return ae.getMac();
+	}
+
 
 	// class EthernetPkt{
 	// 	Ethernet pkt;
