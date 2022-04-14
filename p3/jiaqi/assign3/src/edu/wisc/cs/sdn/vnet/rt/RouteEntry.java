@@ -51,8 +51,8 @@ public class RouteEntry
 	public int getGatewayAddress()
 	{ return this.gatewayAddress; }
 
-	public void setGatewayAddress(int gatewayAddress)
-	{ this.gatewayAddress = gatewayAddress; }
+    public void setGatewayAddress(int gatewayAddress)
+    { this.gatewayAddress = gatewayAddress; }
 	
 	/**
 	 * @return subnet mask 
@@ -67,8 +67,8 @@ public class RouteEntry
 	public Iface getInterface()
 	{ return this.iface; }
 
-	public void setInterface(Iface iface)
-	{ this.iface = iface; }
+    public void setInterface(Iface iface)
+    { this.iface = iface; }
 	
 	public String toString()
 	{
