@@ -280,7 +280,7 @@ public class Router extends Device
 			}
 			System.out.println("no next hop");
 			// this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
-			return;
+			// return;
 		}
 		ether.setDestinationMACAddress(destMAC.toString()); // update destination MACaddress
 		// System.out.println("Handle ether packet header");
@@ -312,6 +312,23 @@ public class Router extends Device
 		return ae.getMac();
 	}
 
+
+	// public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
+	// 	ARPRequestEntry entry;
+	// 	synchronized(arpReqTable) {
+	// 	for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
+	// 		if(ARE.IPAddress == IP) {
+	// 			ARE.addPacketQueue(etherPacket, outIface, inIface);
+	// 			return;
+	// 		}
+	// 	}
+
+	// 	entry = arpReqTable.newARPRequest(IP, etherPacket, inIface, outIface);
+	// 	}
+	// 	EntryThreadImpl obj = new EntryThreadImpl(entry);
+	// 	Thread t = new Thread(obj);
+	// 	t.start();
+	// }
 
 	// class EthernetPkt{
 	// 	Ethernet pkt;
