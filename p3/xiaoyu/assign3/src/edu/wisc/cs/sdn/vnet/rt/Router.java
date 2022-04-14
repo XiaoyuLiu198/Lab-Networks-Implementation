@@ -765,6 +765,7 @@ public class Router extends Device
 		{
 			// time exceeded
 			System.out.println("time exceeded");
+			System.out.println(ipPacket.toString());
 			this.ICMPMessage(ipPacket, inIface, (byte) 11, (byte) 0, false);
 			return;
 		}
