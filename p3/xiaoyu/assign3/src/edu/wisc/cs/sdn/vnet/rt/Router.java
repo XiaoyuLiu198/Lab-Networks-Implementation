@@ -193,6 +193,53 @@ public class Router extends Device
 		// IPv4 ipPacket = (IPv4)etherPacket.getPayload();
 		// prepare ether packet header
 		Ethernet ether = new Ethernet();
+		IPv4 ip = new IPv4();
+		ICMP icmp = new ICMP();
+		Data data = new Data();
+
+		// prepare ICMP header
+		icmp.setIcmpType(type); // try no byte wrapper
+		icmp.setIcmpCode(code);
+
+		// prepare icmp data
+		byte[] inData;
+		if (Echo == false){
+			// ip.setSourceAddress(pkt.getSourceAddress()); // set source ip
+			System.out.println("Handle icmp data");
+			ip.setSourceAddress(inIface.getIpAddress());
+			byte[] oriIpHeaderPayload = pkt.serialize();
+			int i, j, k;
+			int ipHeaderLen = pkt.getHeaderLength()*4;
+			inData = new byte[4 + ipHeaderLen + 8];
+			Arrays.fill(inData, 0, 4, (byte)0);
+			for(i = 0, j = 4; i < ipHeaderLen; i ++, j++){
+				inData[j] = oriIpHeaderPayload[i]; 
+			}
+			k = i;
+			while(k < (i + 8)){
+				inData[j] = oriIpHeaderPayload[k];
+				j++;
+				k++;
+			}
+		}
+		else{
+			ip.setSourceAddress(pkt.getDestinationAddress());
+			inData = ((ICMP)pkt.getPayload()).getPayload().serialize();
+		}
+		data.setData(inData);
+
+		System.out.println("Handle ip v4 header");
+		ip.setTtl((byte) 64); // set ttl
+		ip.setProtocol((byte) IPv4.PROTOCOL_ICMP); // set protocol
+		ip.setSourceAddress(inIface.getIpAddress());
+		ip.setDestinationAddress(pkt.getSourceAddress()); // set destination ip
+		// System.out.println("Handle ip packet header");
+
+		ether.setPayload(ip);
+		ip.setPayload(icmp);
+		icmp.setPayload(data);
+
+		System.out.println("ether header");
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
 
@@ -220,49 +267,15 @@ public class Router extends Device
 				nextHopIP = pkt.getSourceAddress();
 			}
 			// this.sendARPRequest(ether, inIface, inIface, nextHopIP);
+			System.out.println("arp request?");
 			return;
 		}
 		ether.setDestinationMACAddress(nextHopMacAddress.toString()); // update destination MACaddress
-		System.out.println("Handle ether packet header");
-
-		// prepare IP header
-		IPv4 ip = new IPv4();
-		ip.setTtl((byte) 64); // set ttl
-		ip.setProtocol((byte) IPv4.PROTOCOL_ICMP); // set protocol
-		byte[] inData;
-		if (Echo == false){
-			// ip.setSourceAddress(pkt.getSourceAddress()); // set source ip
-			ip.setSourceAddress(inIface.getIpAddress());
-			byte[] oriIpHeaderPayload = pkt.serialize();
-			int ipHeaderLen = pkt.getHeaderLength()*4;
-			inData = new byte[4 + ipHeaderLen + 8];
-			Arrays.fill(inData, 0, 4, (byte)0);
-			for(int i = 0; i < ipHeaderLen + 8; i ++){
-				inData[i + 4] = oriIpHeaderPayload[i]; 
-			}
-		}
-		else{
-			ip.setSourceAddress(pkt.getDestinationAddress());
-			inData = ((ICMP)pkt.getPayload()).getPayload().serialize();
-		}
-		
-		ip.setDestinationAddress(pkt.getSourceAddress()); // set destination ip
-		System.out.println("Handle ip packet header");
-		
-		Data data = new Data();
-		ICMP icmp = new ICMP();
-
-		// prepare ICMP header
-		icmp.setIcmpType(type); // try no byte wrapper
-		icmp.setIcmpCode(code);
-		
-		data.setData(inData);
-		ether.setPayload(ip);
-		ip.setPayload(icmp);
-		icmp.setPayload(data);
+		// System.out.println("Handle ether packet header");
 		System.out.println("Combined");
 
 		this.sendPacket(ether, inIface);
+		System.out.println("sent");
 	}
 
 	// class EthernetPkt{
@@ -726,7 +739,7 @@ public class Router extends Device
 					if(icmpPacket.getIcmpType() == ICMP.TYPE_ECHO_REQUEST) 
 					{
 						System.out.println("echo reply");
-						ICMPMessage(ipPacket, inIface, (byte)0, (byte)0, true);;
+						ICMPMessage(ipPacket, inIface, (byte)0, (byte)0, true);
 					}
 				}
 				return; }
