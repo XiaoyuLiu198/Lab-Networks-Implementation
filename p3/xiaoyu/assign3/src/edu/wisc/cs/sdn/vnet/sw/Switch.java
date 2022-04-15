@@ -1,17 +1,18 @@
 package edu.wisc.cs.sdn.vnet.sw;
 
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.MACAddress;
 import edu.wisc.cs.sdn.vnet.Device;
 import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
+import java.util.*;
 
 /**
  * @author Aaron Gember-Jacobson
  */
 public class Switch extends Device
 {
-	private MACTable macTable;
-	
+	ForwardingTable ft;
 	/**
 	 * Creates a router for a specific host.
 	 * @param host hostname for the router
@@ -19,7 +20,7 @@ public class Switch extends Device
 	public Switch(String host, DumpFile logfile)
 	{
 		super(host,logfile);
-		this.macTable = new MACTable();
+		ft = new ForwardingTable();
 	}
 
 	/**
@@ -33,25 +34,25 @@ public class Switch extends Device
                 etherPacket.toString().replace("\n", "\n\t"));
 		
 		/********************************************************************/
-		/* TODO: Handle packets                                             */
-		
-		this.macTable.insert(etherPacket.getSourceMAC(), inIface);
-		
-		MACTableEntry entry = this.macTable.lookup(etherPacket.getDestinationMAC());
-		if (entry != null)
-		{ this.sendPacket(etherPacket, entry.getInterface()); }
-		else
-		{
-			for (Iface iface : this.interfaces.values()) 
-			{
-				if (iface != inIface)
-				{
-					this.sendPacket(etherPacket, iface);
-					System.out.println("Send packet out interface "+iface);
+		/* Learing MAC Address and its Interface */
+		ft.learnForwarding(etherPacket.getSourceMAC(), inIface);
+
+		/* Forwarding packets to the correct Interface */
+		Iface outIface = ft.getIFaceForMAC(etherPacket.getDestinationMAC());
+		if(outIface == null) {
+			/* If no matching entry of MAC address in Forwarind Table,
+			 * broadcast the packet on every interface (Except Incomming
+			 * Interface) */
+			for(Map.Entry<String,Iface> entry: interfaces.entrySet()) {
+				if(entry.getKey().equals(inIface.getName())) {
+					/* Move to next entry */
+				} else {
+					sendPacket(etherPacket, entry.getValue());
 				}
 			}
+		} else {
+			sendPacket(etherPacket, outIface);
 		}
-		
 		/********************************************************************/
 	}
 }
