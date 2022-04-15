@@ -560,33 +560,9 @@ public class Router extends Device
 
 		entry = arpTable.newARPRequest(IP, etherPacket, inIface, outIface);
 		}
-		EntryThreadImpl obj = new EntryThreadImpl(entry);
-		Thread t = new Thread(obj);
+		Entryto timeout = new Entryto(entry);
+		Thread t = new Thread(timeout);
 		t.start();
-	}
-
-	public void ARPRupdate(int IPAddress, Iface outIface, etherwrap p1) {
-		Ethernet ether = new Ethernet();
-		ARP pkt = new ARP();
-
-		ether.setEtherType(Ethernet.TYPE_ARP);
-		ether.setSourceMACAddress(p1.inIface.getMacAddress().toString());
-		ether.setDestinationMACAddress("FF:FF:FF:FF:FF:FF");
-
-		pkt.setHardwareType(ARP.HW_TYPE_ETHERNET);
-		pkt.setProtocolType(ARP.PROTO_TYPE_IP);
-		pkt.setHardwareAddressLength((byte)Ethernet.DATALAYER_ADDRESS_LENGTH);
-		pkt.setProtocolAddressLength((byte)4);
-		pkt.setOpCode(ARP.OP_REQUEST);
-		pkt.setSenderHardwareAddress(p1.inIface.getMacAddress().toBytes());
-		pkt.setSenderProtocolAddress(p1.inIface.getIpAddress());
-		byte val[] = new byte[6];
-		pkt.setTargetHardwareAddress(val);
-		pkt.setTargetProtocolAddress(IPAddress);
-
-		ether.setPayload(pkt);
-
-		sendPacket(ether, outIface);
 	}
 
 	public void sendRIPPacket(byte command) {
@@ -662,10 +638,10 @@ public class Router extends Device
 	}
 
 	/* Class implementing thread functionality of ARPRequest Table Entry */
-	class EntryThreadImpl implements Runnable {
+	class Entryto implements Runnable {
 		ARPREntry entry;
 
-		public EntryThreadImpl(ARPREntry entry) {
+		public Entryto(ARPREntry entry) {
 			this.entry = entry;
 		}
 
@@ -687,6 +663,30 @@ public class Router extends Device
 				}
 			}
 		}
+	}
+
+	public void ARPRupdate(int IPAddress, Iface outIface, etherwrap p1) {
+		Ethernet ether = new Ethernet();
+		ARP pkt = new ARP();
+
+		ether.setEtherType(Ethernet.TYPE_ARP);
+		ether.setSourceMACAddress(p1.inIface.getMacAddress().toString());
+		ether.setDestinationMACAddress("FF:FF:FF:FF:FF:FF");
+
+		pkt.setHardwareType(ARP.HW_TYPE_ETHERNET);
+		pkt.setProtocolType(ARP.PROTO_TYPE_IP);
+		pkt.setHardwareAddressLength((byte)Ethernet.DATALAYER_ADDRESS_LENGTH);
+		pkt.setProtocolAddressLength((byte)4);
+		pkt.setOpCode(ARP.OP_REQUEST);
+		pkt.setSenderHardwareAddress(p1.inIface.getMacAddress().toBytes());
+		pkt.setSenderProtocolAddress(p1.inIface.getIpAddress());
+		byte val[] = new byte[6];
+		pkt.setTargetHardwareAddress(val);
+		pkt.setTargetProtocolAddress(IPAddress);
+
+		ether.setPayload(pkt);
+
+		sendPacket(ether, outIface);
 	}
 
 	class TableThreadImpl implements Runnable {
