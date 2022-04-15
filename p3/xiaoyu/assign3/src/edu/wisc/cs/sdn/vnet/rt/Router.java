@@ -243,65 +243,78 @@ public class Router extends Device {
 								}
 							}
 						}
+						}
+						if(find == false){
+							updated = true;
+							DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(), ripEntry.getMetric()+1, 1);
+							distanceVectorTable.addtoDV(entry);
+							DVEntryto TOObj = new DVEntryto(newDVEntry);
+							Thread TOT = new Thread(TOObj);
+							TOT.start();
+							routeTable.insert(ripEntry.getAddress(), pkt.getSourceAddress(), ripEntry.getSubnetMask(), inIface);
+						}
+					}
+					if (updated == true) {
+						sendRIPPacket((byte) 2, BROADCAST, 0, (MACAddress) null, null);
+					}
+					return;
+					}
+				 }
+				else {
+					boolean isRouterIP = false;
+					for (Map.Entry<String, Iface> entry : interfaces.entrySet()) {
+						if (pkt.getDestinationAddress() == entry.getValue().getIpAddress()) {
+							isRouterIP = true;
+							break;
+						}
+					}
+					if (isRouterIP == true) {
+						boolean match = false, updated = false;
+						RIPv2 ripPkt = (RIPv2) udp.getPayload();
+
+						System.out.println("RIP Entries");
+						System.out.println(ripPkt);
+						synchronized (this.distanceVectorTable) {
+							for (RIPv2Entry ripEntry : ripPkt.getEntries()) {
+								match = false;
+								for (DistanceVectorEntry dvEntry : distanceVectorTable.DVTable) {
+									if (dvEntry.IPAddress == ripEntry.getAddress()) {
+										dvEntry.time = System.currentTimeMillis();
+										match = true;
+										if (dvEntry.metric > (ripEntry.getMetric() + 1)) {
+											updated = true;
+											dvEntry.metric = ripEntry.getMetric() + 1;
+											routeTable.update(dvEntry.IPAddress, ripEntry.getSubnetMask(),
+													pkt.getSourceAddress(), inIface);
+										} else {
+										}
+									}
+								}
+								if (match == false) {
+									updated = true;
+									DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(),
+											ripEntry.getMetric() + 1, 1);
+									distanceVectorTable.addtoDV(newDVEntry);
+									DVEntryto TOThreadObj = new DVEntryto(newDVEntry);
+									Thread TOThread = new Thread(TOThreadObj);
+									TOThread.start();
+									routeTable.insert(ripEntry.getAddress(), pkt.getSourceAddress(),
+											ripEntry.getSubnetMask(), inIface);
+								}
+							}
+						}
 						if (updated == true) {
 							sendRIPPacket((byte) 2, BROADCAST, 0, (MACAddress) null, null);
 						}
 						return;
-					} else {
-						boolean isRouterIP = false;
-						for (Map.Entry<String, Iface> entry : interfaces.entrySet()) {
-							if (pkt.getDestinationAddress() == entry.getValue().getIpAddress()) {
-								isRouterIP = true;
-								break;
-							}
-						}
-						if (isRouterIP == true) {
-							boolean match = false, updated = false;
-							RIPv2 ripPkt = (RIPv2) udp.getPayload();
-
-							System.out.println("RIP Entries");
-							System.out.println(ripPkt);
-							synchronized (this.distanceVectorTable) {
-								for (RIPv2Entry ripEntry : ripPkt.getEntries()) {
-									match = false;
-									for (DistanceVectorEntry dvEntry : distanceVectorTable.DVTable) {
-										if (dvEntry.IPAddress == ripEntry.getAddress()) {
-											dvEntry.time = System.currentTimeMillis();
-											match = true;
-											if (dvEntry.metric > (ripEntry.getMetric() + 1)) {
-												updated = true;
-												dvEntry.metric = ripEntry.getMetric() + 1;
-												routeTable.update(dvEntry.IPAddress, ripEntry.getSubnetMask(),
-														pkt.getSourceAddress(), inIface);
-											} else {
-											}
-										}
-									}
-									if (match == false) {
-										updated = true;
-										DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(),
-												ripEntry.getMetric() + 1, 1);
-										distanceVectorTable.addtoDV(newDVEntry);
-										DVEntryto TOThreadObj = new DVEntryto(newDVEntry);
-										Thread TOThread = new Thread(TOThreadObj);
-										TOThread.start();
-										routeTable.insert(ripEntry.getAddress(), pkt.getSourceAddress(),
-												ripEntry.getSubnetMask(), inIface);
-									}
-								}
-							}
-							if (updated == true) {
-								sendRIPPacket((byte) 2, BROADCAST, 0, (MACAddress) null, null);
-							}
-							return;
-						}
-
 					}
-
-				} else {
+					}
 				}
-			} else {
 			}
+			//  else {
+			// 	}
+			// else {
+			// }
 
 			// Verify checksum
 			short actualCheckSum = pkt.getChecksum();
