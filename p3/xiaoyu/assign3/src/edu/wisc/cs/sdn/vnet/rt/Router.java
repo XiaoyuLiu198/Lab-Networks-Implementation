@@ -81,28 +81,28 @@ public class Router extends Device
 			this.destinationMAC = null;
 		}
 	
-		public void addPacketQueue(Ethernet pkt, Iface outIface, Iface inIface) {
-			synchronized(this) {
-				etherwrap infoNode = new etherwrap(pkt, inIface);
-				this.etherPktl.add(infoNode);
-				// for(etherwrap e: etherPktl){
-				// 	// etherwrap e = etherPktl.get(i);
-				// 	IPv4 pkt1 = (IPv4)e.pkt.getPayload();
-				// }
-				// Iterator<etherwrap> itr = etherPktl.iterator();
-				// while (itr.hasNext()) {
-				// 	etherwrap e = itr.next();
-				// 	IPv4 pkt_now = (IPv4)e.pkt.getPayload();
-				// }
-			}
-		}
+		// public void addPacketQueue(Ethernet pkt, Iface outIface, Iface inIface) {
+		// 	synchronized(this) {
+		// 		etherwrap infoNode = new etherwrap(pkt, inIface);
+		// 		this.etherPktl.add(infoNode);
+		// 		// for(etherwrap e: etherPktl){
+		// 		// 	// etherwrap e = etherPktl.get(i);
+		// 		// 	IPv4 pkt1 = (IPv4)e.pkt.getPayload();
+		// 		// }
+		// 		// Iterator<etherwrap> itr = etherPktl.iterator();
+		// 		// while (itr.hasNext()) {
+		// 		// 	etherwrap e = itr.next();
+		// 		// 	IPv4 pkt_now = (IPv4)e.pkt.getPayload();
+		// 		// }
+		// 	}
+		// }
 	
-		public void disable(MACAddress destinationMAC) {
-			synchronized(this) {
-				this.nTry = -1;
-				this.destinationMAC = destinationMAC;
-			}
-		}
+		// public void disable(MACAddress destinationMAC) {
+		// 	synchronized(this) {
+		// 		this.nTry = -1;
+		// 		this.destinationMAC = destinationMAC;
+		// 	}
+		// }
 	}
 
 	public class ARPRTable {
@@ -213,7 +213,15 @@ public class Router extends Device
 				synchronized(arpReqTable) {
 				for(ARPREntry ARE : arpReqTable.ARPRequestTab) {
 					if(ARE.IPAddress == arpReplyIPAddress) {
-						ARE.disable(destinationMAC);
+						ARE.nTry = -1;
+						ARE.destinationMAC = destinationMAC;
+						// ARE.disable(destinationMAC);
+						// public void disable(MACAddress destinationMAC) {
+						// 	synchronized(this) {
+						// 		this.nTry = -1;
+						// 		this.destinationMAC = destinationMAC;
+						// 	}
+						// }
 						break;
 					}
 				}
@@ -597,7 +605,9 @@ public class Router extends Device
 		synchronized(arpReqTable) {
 		for(ARPREntry ARE : arpReqTable.ARPRequestTab) {
 			if(ARE.IPAddress == IP) {
-				ARE.addPacketQueue(etherPacket, outIface, inIface);
+				// ARE.addPacketQueue(etherPacket, outIface, inIface);
+				etherwrap i = new etherwrap(etherPacket, inIface);
+				ARE.etherPktl.add(i);
 				return;
 			}
 		}
@@ -611,24 +621,24 @@ public class Router extends Device
 
 	public void sendARPRequestPacket(int IPAddress, Iface outIface, etherwrap p1) {
 		Ethernet ether = new Ethernet();
-		ARP arpPkt = new ARP();
+		ARP pkt = new ARP();
 
 		ether.setEtherType(Ethernet.TYPE_ARP);
 		ether.setSourceMACAddress(p1.inIface.getMacAddress().toString());
 		ether.setDestinationMACAddress("FF:FF:FF:FF:FF:FF");
 
-		arpPkt.setHardwareType(ARP.HW_TYPE_ETHERNET);
-		arpPkt.setProtocolType(ARP.PROTO_TYPE_IP);
-		arpPkt.setHardwareAddressLength((byte)Ethernet.DATALAYER_ADDRESS_LENGTH);
-		arpPkt.setProtocolAddressLength((byte)4);
-		arpPkt.setOpCode(ARP.OP_REQUEST);
-		arpPkt.setSenderHardwareAddress(p1.inIface.getMacAddress().toBytes());
-		arpPkt.setSenderProtocolAddress(p1.inIface.getIpAddress());
+		pkt.setHardwareType(ARP.HW_TYPE_ETHERNET);
+		pkt.setProtocolType(ARP.PROTO_TYPE_IP);
+		pkt.setHardwareAddressLength((byte)Ethernet.DATALAYER_ADDRESS_LENGTH);
+		pkt.setProtocolAddressLength((byte)4);
+		pkt.setOpCode(ARP.OP_REQUEST);
+		pkt.setSenderHardwareAddress(p1.inIface.getMacAddress().toBytes());
+		pkt.setSenderProtocolAddress(p1.inIface.getIpAddress());
 		byte val[] = new byte[6];
-		arpPkt.setTargetHardwareAddress(val);
-		arpPkt.setTargetProtocolAddress(IPAddress);
+		pkt.setTargetHardwareAddress(val);
+		pkt.setTargetProtocolAddress(IPAddress);
 
-		ether.setPayload(arpPkt);
+		ether.setPayload(pkt);
 
 		sendPacket(ether, outIface);
 	}
