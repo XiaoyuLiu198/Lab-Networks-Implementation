@@ -509,7 +509,7 @@ public class Router extends Device
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
 			}
-			// this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+			this.updatearpt(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
 			return;
 		}
 		// RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
@@ -568,7 +568,7 @@ public class Router extends Device
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
 			}
-			// this.sendARPRequest(ether, inIface, inIface, nextHopIPAddress);
+			this.updatearpt(ether, inIface, inIface, nextHopIPAddress);
 			return;
 		}
 		ether.setDestinationMACAddress(destMAC.toString());
@@ -628,8 +628,8 @@ public class Router extends Device
 	// }
 
 	/* ARP Request */
-	public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
-		System.out.println("send arprequest line 632");
+	public void updatearpt(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
+		System.out.println("arpupdate");
 		ARPRequestEntry entry;
 		synchronized(arpReqTable) {
 		for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
@@ -756,9 +756,9 @@ public class Router extends Device
 				if(this.entry.nTry <= 0)
 					break;
 
-				synchronized(this.entry) {
-					sendARPRequestPacket(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktQ.peek());
-				}
+				// synchronized(this.entry) {
+				// 	sendARPRequestPacket(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktQ.peek());
+				// }
 				try {
 					Thread.sleep(1000);
 				} catch(Exception e) {
