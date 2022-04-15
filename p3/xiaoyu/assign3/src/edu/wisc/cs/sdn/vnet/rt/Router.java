@@ -426,7 +426,7 @@ public class Router extends Device {
 			// 	j++;
 			// 	k++;
 			// }
-			for(int k = j; k < len; k ++){
+			for(k = j; k < len; k ++){
 				inData[k] = ipheaderpay[i];
 				i++;
 			}
