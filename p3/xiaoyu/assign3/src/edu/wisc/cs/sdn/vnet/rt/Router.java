@@ -354,8 +354,8 @@ public class Router extends Device
 				else if(protocolType == IPv4.PROTOCOL_ICMP) {
 					ICMP icmpPkt = (ICMP)pkt.getPayload();
 					if(icmpPkt.getIcmpType() == (byte)8) {
-						// this.sendEchoReplyPacket(pkt, inIface, (byte)0, (byte)0);
-						this.sendICMPPacket(pkt, inIface, (byte)0, (byte)0, true);
+						this.sendEchoReplyPacket(pkt, inIface, (byte)0, (byte)0);
+						// this.sendICMPPacket(pkt, inIface, (byte)0, (byte)0, true);
 					}
 				}
 				return;
