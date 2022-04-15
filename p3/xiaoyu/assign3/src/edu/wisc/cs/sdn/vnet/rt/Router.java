@@ -246,6 +246,7 @@ public class Router extends Device
 		// 		/* Not IP Packet - Dropping */
 		// 		return;
 		// }
+		System.out.println("get ip packet");
 		IPv4 pkt = (IPv4)etherPacket.getPayload();
 
 		int expectedRIPMulticastAddress = pkt.toIPv4Address("224.0.0.9");
