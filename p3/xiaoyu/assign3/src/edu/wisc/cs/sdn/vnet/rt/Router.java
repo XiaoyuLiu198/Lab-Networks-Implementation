@@ -54,6 +54,75 @@ public class Router extends Device
 	 */
 	public RouteTable getRouteTable()
 	{ return this.routeTable; }
+
+	class EthernetPktInfo {
+		Ethernet pkt;
+		Iface inIface;
+	
+		public EthernetPktInfo(Ethernet pkt, Iface inIface) {
+			this.pkt = pkt;
+			this.inIface = inIface;
+		}
+	}
+	
+	public class ARPREntry {
+		int IPAddress;
+		Queue<EthernetPktInfo> etherPktQ;
+		Iface outIface;
+	
+		/* Initial Value : 3
+		 * When ARP request send : value--
+		 * When ARP reply recieved : -1
+		*/
+		int nTry;
+		MACAddress destinationMAC;
+	
+		public ARPREntry(int IP, Ethernet pkt, Iface outIface, Iface inIface) {
+			this.IPAddress = IP;
+			this.etherPktQ = new LinkedList<EthernetPktInfo>();
+			EthernetPktInfo infoNode = new EthernetPktInfo(pkt, inIface);
+			this.etherPktQ.add(infoNode);
+			this.outIface = outIface;
+			this.nTry = 3;
+			this.destinationMAC = null;
+		}
+	
+		public void addPacketQueue(Ethernet pkt, Iface outIface, Iface inIface) {
+			synchronized(this) {
+				EthernetPktInfo infoNode = new EthernetPktInfo(pkt, inIface);
+				this.etherPktQ.add(infoNode);
+				Iterator<EthernetPktInfo> itr = etherPktQ.iterator();
+				while (itr.hasNext()) {
+					EthernetPktInfo e = itr.next();
+					IPv4 pkt1 = (IPv4)e.pkt.getPayload();
+				}
+			}
+		}
+	
+		public void invalidateARPRequestEntry(MACAddress destinationMAC) {
+			synchronized(this) {
+				this.nTry = -1;
+				this.destinationMAC = destinationMAC;
+			}
+		}
+	}
+
+	public class ARPRequestTable {
+		ArrayList<ARPREntry> ARPRequestTab;
+	
+		public ARPRequestTable() {
+			ARPRequestTab = new ArrayList<ARPREntry>();
+		}
+	
+		public ARPREntry newARPRequest(int IP, Ethernet pkt, Iface inIface, Iface outIface) {
+			synchronized(this.ARPRequestTab) {
+				ARPREntry entry = new ARPREntry(IP, pkt, outIface, inIface);
+				ARPRequestTab.add(entry);
+				return entry;
+			}
+		}
+	
+	}
 	
 	/** Init Router Table */
 	public void initRouterTable()
@@ -144,7 +213,7 @@ public class Router extends Device
 
 				/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
 				synchronized(arpReqTable) {
-				for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
+				for(ARPREntry ARE : arpReqTable.ARPRequestTab) {
 					if(ARE.IPAddress == arpReplyIPAddress) {
 						ARE.invalidateARPRequestEntry(destinationMAC);
 						break;
@@ -526,9 +595,9 @@ public class Router extends Device
 
 	/* ARP Request */
 	public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
-		ARPRequestEntry entry;
+		ARPREntry entry;
 		synchronized(arpReqTable) {
-		for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
+		for(ARPREntry ARE : arpReqTable.ARPRequestTab) {
 			if(ARE.IPAddress == IP) {
 				ARE.addPacketQueue(etherPacket, outIface, inIface);
 				return;
@@ -640,9 +709,9 @@ public class Router extends Device
 
 	/* Class implementing thread functionality of ARPRequest Table Entry */
 	class EntryThreadImpl implements Runnable {
-		ARPRequestEntry entry;
+		ARPREntry entry;
 
-		public EntryThreadImpl(ARPRequestEntry entry) {
+		public EntryThreadImpl(ARPREntry entry) {
 			this.entry = entry;
 		}
 
@@ -685,9 +754,9 @@ public class Router extends Device
 				} else {
 					synchronized(this.table) {
 					//System.out.println("Scanning ARP Request table");
-					Iterator<ARPRequestEntry> iterator = table.ARPRequestTab.iterator();
+					Iterator<ARPREntry> iterator = table.ARPRequestTab.iterator();
 					while(iterator.hasNext()) {
-						ARPRequestEntry entry = iterator.next();
+						ARPREntry entry = iterator.next();
 						/* Condition 1 : 3 ARP request sent but no ARP Replies yet */
 						/* -> Send ICMP - Destination host not rechable packet for every
 						/* 	queued Ethernet Packet in the Incoming interface */
