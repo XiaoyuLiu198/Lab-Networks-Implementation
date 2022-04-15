@@ -42,7 +42,7 @@ public class Router extends Device
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
 		this.arpTable = new ARPRTable();
-		TableThreadImpl obj = new TableThreadImpl(this.arpTable);
+		Tableto obj = new Tableto(this.arpTable);
 		Thread t = new Thread(obj);
 		t.start();
 		this.distanceVectorTable = new DistanceVectorTable();
@@ -83,16 +83,16 @@ public class Router extends Device
 	}
 
 	public class ARPRTable {
-		ArrayList<ARPREntry> ARPRequestTab;
+		ArrayList<ARPREntry> ARPs;
 	
 		public ARPRTable() {
-			ARPRequestTab = new ArrayList<ARPREntry>();
+			ARPs = new ArrayList<ARPREntry>();
 		}
 	
 		public ARPREntry newARPRequest(int IP, Ethernet pkt, Iface inIface, Iface outIface) {
-			synchronized(this.ARPRequestTab) {
+			synchronized(this.ARPs) {
 				ARPREntry entry = new ARPREntry(IP, pkt, outIface, inIface);
-				ARPRequestTab.add(entry);
+				ARPs.add(entry);
 				return entry;
 			}
 		}
@@ -114,7 +114,7 @@ public class Router extends Device
 		sendRIPPacket((byte)1);
 
 		/* DV Table tracking thread - Timeout & periodic updates */
-		DVTableThreadImpl dvThreadObj = new DVTableThreadImpl(this.distanceVectorTable);
+		DVTableto dvThreadObj = new DVTableto(this.distanceVectorTable);
 		Thread dvThread = new Thread(dvThreadObj);
 		dvThread.start();
 	}
@@ -189,7 +189,7 @@ public class Router extends Device
 
 				/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
 				synchronized(arpTable) {
-				for(ARPREntry ARE : arpTable.ARPRequestTab) {
+				for(ARPREntry ARE : arpTable.ARPs) {
 					if(ARE.IPAddress == arpReplyIPAddress) {
 						ARE.nTry = -1;
 						ARE.destinationMAC = destinationMAC;
@@ -550,7 +550,7 @@ public class Router extends Device
 	public void arpupdate(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
 		ARPREntry entry;
 		synchronized(arpTable) {
-		for(ARPREntry ARE : arpTable.ARPRequestTab) {
+		for(ARPREntry ARE : arpTable.ARPs) {
 			if(ARE.IPAddress == IP) {
 				etherwrap i = new etherwrap(etherPacket, inIface);
 				ARE.etherPktl.add(i);
@@ -637,7 +637,7 @@ public class Router extends Device
 		sendPacket(ether, inIface);
 	}
 
-	/* Class implementing thread functionality of ARPRequest Table Entry */
+	// arp entry renew
 	class Entryto implements Runnable {
 		ARPREntry entry;
 
@@ -689,16 +689,16 @@ public class Router extends Device
 		sendPacket(ether, outIface);
 	}
 
-	class TableThreadImpl implements Runnable {
+	class Tableto implements Runnable {
 		ARPRTable table;
 
-		public TableThreadImpl(ARPRTable table) {
+		public Tableto(ARPRTable table) {
 			this.table = table;
 		}
 
 		public void run() {
 			while(true) {
-				if(table.ARPRequestTab.size() == 0) {
+				if(table.ARPs.size() == 0) {
 					try {
 						Thread.sleep(1000);
 					} catch(Exception e) {
@@ -707,13 +707,9 @@ public class Router extends Device
 					continue;
 				} else {
 					synchronized(this.table) {
-					//System.out.println("Scanning ARP Request table");
-					Iterator<ARPREntry> iterator = table.ARPRequestTab.iterator();
+					Iterator<ARPREntry> iterator = table.ARPs.iterator();
 					while(iterator.hasNext()) {
 						ARPREntry entry = iterator.next();
-						/* Condition 1 : 3 ARP request sent but no ARP Replies yet */
-						/* -> Send ICMP - Destination host not rechable packet for every
-						/* 	queued Ethernet Packet in the Incoming interface */
 						if(entry.nTry == 0) {
 							while(!entry.etherPktl.isEmpty()) {
 								etherwrap infoNode = entry.etherPktl.poll();
@@ -723,8 +719,6 @@ public class Router extends Device
 							}
 							iterator.remove();
 						}
-						/* Condition 2 : ARP reply received for the IP */
-						/* -> Forward the packet for the MAC address updated in the entry */
 						else if(entry.nTry == -1) {
 							while(!entry.etherPktl.isEmpty()) {
 								etherwrap infoNode = entry.etherPktl.poll();
@@ -741,11 +735,11 @@ public class Router extends Device
 		}
 	}
 
-	class DVTableThreadImpl implements Runnable {
+	class DVTableto implements Runnable {
 		DistanceVectorTable table;
 		long time;
 
-		public DVTableThreadImpl(DistanceVectorTable table) {
+		public DVTableto(DistanceVectorTable table) {
 			this.table = table;
 			this.time = System.currentTimeMillis();
 		}
