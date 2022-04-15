@@ -500,14 +500,14 @@ public class Router extends Device
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
 		MACAddress destMAC = findMACFromRTLookUp(pktIn.getSourceAddress());
 		if(destMAC == null) {
-			System.out.println("destmac check");
+			System.out.println("destmac");
 			RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
 			/* Find the next hop IP Address */
 			int nextHopIPAddress = rEntry.getGatewayAddress();
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
 			}
-			// this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+			this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
 			return;
 		}
 		// RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
