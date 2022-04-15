@@ -629,7 +629,7 @@ public class Router extends Device
 
 	/* ARP Request */
 	public void updatearpt(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
-		System.out.println("arpupdate");
+		System.out.println("send arpupdate");
 		ARPRequestEntry entry;
 		synchronized(arpReqTable) {
 		for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
@@ -756,9 +756,9 @@ public class Router extends Device
 				if(this.entry.nTry <= 0)
 					break;
 
-				// synchronized(this.entry) {
-				// 	sendARPRequestPacket(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktQ.peek());
-				// }
+				synchronized(this.entry) {
+					sendARPRequestPacket(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktQ.peek());
+				}
 				try {
 					Thread.sleep(1000);
 				} catch(Exception e) {
