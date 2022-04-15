@@ -509,7 +509,7 @@ public class Router extends Device
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
 			}
-			this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+			// this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
 			return;
 		}
 		// RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
@@ -568,7 +568,7 @@ public class Router extends Device
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
 			}
-			this.sendARPRequest(ether, inIface, inIface, nextHopIPAddress);
+			// this.sendARPRequest(ether, inIface, inIface, nextHopIPAddress);
 			return;
 		}
 		ether.setDestinationMACAddress(destMAC.toString());
