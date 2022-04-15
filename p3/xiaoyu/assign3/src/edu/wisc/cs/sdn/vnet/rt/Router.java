@@ -168,9 +168,6 @@ public class Router extends Device {
 		System.out.println("*** -> Received packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
 
-		/********************************************************************/
-		// Handle packets
-
 		// Handle ARP Request
 		if (etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
 			ARP arpPacket = (ARP) etherPacket.getPayload();
@@ -193,8 +190,6 @@ public class Router extends Device {
 						}
 					}
 				}
-
-				// Add MAC Address to ARP Cache
 				arpCache.insert(destinationMAC, arpReplyIPAddress);
 				return;
 			} else {
@@ -227,7 +222,6 @@ public class Router extends Device {
 						for(DistanceVectorEntry dvEntry : distanceVectorTable.DVTable) {
 							synchronized(dvEntry) {
 							if(dvEntry.IPAddress == ripEntry.getAddress()) {
-								// dvEntry.updateTime();
 								dvEntry.time = System.currentTimeMillis();
 								find = true;
 								if(dvEntry.metric > (ripEntry.getMetric() + 1)) {
@@ -576,7 +570,6 @@ public class Router extends Device {
 				}
 				rip.setCommand(command);
 
-				/* UDP Packet */
 				UDP udpPkt = new UDP();
 				udpPkt.setSourcePort(UDP.RIP_PORT);
 				udpPkt.setDestinationPort(UDP.RIP_PORT);
@@ -727,7 +720,6 @@ public class Router extends Device {
 		}
 	}
 
-	// update arp table
 	public void arpupdate(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
 		ARPREntry entry;
 		synchronized (arpTable) {
@@ -786,7 +778,6 @@ public class Router extends Device {
 				long now = System.currentTimeMillis();
 				if ((now - this.time) > 10000) {
 					// broadcast every 10 seconds
-					// sendRIPPacket((byte)2);
 					sendRIPPacket((byte) 2, BROADCAST, 0, (MACAddress) null, null);
 					this.time = System.currentTimeMillis();
 				}
