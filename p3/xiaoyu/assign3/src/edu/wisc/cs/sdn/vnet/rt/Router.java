@@ -269,7 +269,8 @@ public class Router extends Device {
 						}
 					}
 					if (isRouterIP == true) {
-						boolean match = false, updated = false;
+						boolean match = false
+						boolean updated = false;
 						RIPv2 ripPkt = (RIPv2) udp.getPayload();
 
 						System.out.println("RIP Entries");
@@ -311,10 +312,6 @@ public class Router extends Device {
 					}
 				}
 			}
-			//  else {
-			// 	}
-			// else {
-			// }
 
 			// Verify checksum
 			short actualCheckSum = pkt.getChecksum();
@@ -423,11 +420,15 @@ public class Router extends Device {
 			for (i = 0, j = 4; i < (pkt.getHeaderLength() * 4); i++, j++) {
 				inData[j] = ipheaderpay[i];
 			}
-			k = i;
-			while (k < (i + 8)) {
-				inData[j] = ipheaderpay[k];
-				j++;
-				k++;
+			// k = i;
+			// while (k < (i + 8)) {
+			// 	inData[j] = ipheaderpay[k];
+			// 	j++;
+			// 	k++;
+			// }
+			for(j < len; j ++){
+				inData[j] = ipheaderpay[i];
+				i++;
 			}
 			data.setData(inData);
 		} else {
