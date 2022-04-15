@@ -423,20 +423,19 @@ public class Router extends Device
 		byte[] inData = new byte[len];
 		Arrays.fill(inData, 0, 4, (byte)0);
 		byte[] ipheaderpay = pkt.serialize();
-		for(int i = 0; i < len; i++){
-			inData[i+4] = ipheaderpay[i];
+		// for(int i = 0; i < len; i++){
+		// 	inData[i+4] = ipheaderpay[i];
+		// }
+		int i, j, k;
+		for(i = 0, j = 4; i < (pkt.getHeaderLength() * 4); i++, j++) {
+			inData[j] = ipheaderpay[i];
 		}
-		// int i, j, k;
-		// for(i = 0, j = 4; i < (pkt.getHeaderLength() * 4); i++, j++) {
-		// 	inData[j] = ipheaderpay[i];
-		// }
-		// /* 8 byte of IP playload */
-		// k = i;
-		// while(k < (i + 8)) {
-		// 	inData[j] = ipheaderpay[k];
-		// 	j++;
-		// 	k++;
-		// }
+		k = i;
+		while(k < (i + 8)) {
+			inData[j] = ipheaderpay[k];
+			j++;
+			k++;
+		}
 		data.setData(inData);
 
 		/* IPv4 header construction */
