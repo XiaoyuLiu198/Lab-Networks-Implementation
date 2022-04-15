@@ -200,14 +200,15 @@ public class Router extends Device
 		/* CHECK 1 : Ethernet Packet */
 		/* Handle ARP Request */
 		if(etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
-			System.out.println("arp request sent");
+			// System.out.println("arp request sent");
 			ARP arpPacket = (ARP)etherPacket.getPayload();
 			IPv4 ipv4Packet = (IPv4)etherPacket.getPayload();
 			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
 			if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
 				/* Send ARP Reply */
-				this.sendICMPPacket(ipv4Packet, inIface, (byte)11, (byte)0);
-				// this.sendARPReply(etherPacket, arpPacket, inIface);
+				System.out.println("arp request sent");
+				// this.sendICMPPacket(ipv4Packet, inIface, (byte)11, (byte)0);
+				this.sendARPReply(etherPacket, arpPacket, inIface);
 				return;
 			}
 			// else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
