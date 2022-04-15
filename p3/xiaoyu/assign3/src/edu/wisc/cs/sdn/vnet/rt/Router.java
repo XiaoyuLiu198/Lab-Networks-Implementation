@@ -201,38 +201,39 @@ public class Router extends Device
 		/* Handle ARP Request */
 		if(etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
 			System.out.println("arp request sent");
-			ARP arpPacket = (ARP)etherPacket.getPayload();
-			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
-			if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
-				/* Send ARP Reply */
-				this.sendARPReply(etherPacket, arpPacket, inIface);
-				return;
-			}
-			else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
-				/* Got ARP Reply */
-				IPv4 dummyPkt = new IPv4();
-				int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
-				MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
+			// ARP arpPacket = (ARP)etherPacket.getPayload();
+			// int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
+			// if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
+			// 	/* Send ARP Reply */
+			// 	this.sendARPReply(etherPacket, arpPacket, inIface);
+			// 	return;
+			// }
+			// else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
+			// 	/* Got ARP Reply */
+			// 	IPv4 dummyPkt = new IPv4();
+			// 	int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
+			// 	MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
 
-				/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
-				synchronized(arpReqTable) {
-				for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
-					if(ARE.IPAddress == arpReplyIPAddress) {
-						ARE.invalidateARPRequestEntry(destinationMAC);
-						break;
-					}
-				}
-				}
+			// 	/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
+			// 	synchronized(arpReqTable) {
+			// 	for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
+			// 		if(ARE.IPAddress == arpReplyIPAddress) {
+			// 			ARE.invalidateARPRequestEntry(destinationMAC);
+			// 			break;
+			// 		}
+			// 	}
+			// 	}
 
-				/* Add MAC Address to ARP Cache */
-				arpCache.insert(destinationMAC, arpReplyIPAddress);
-				return;
-			}
-			else
-			{
-				/* Drop Pakcet */
-				return;
-			}
+			// 	/* Add MAC Address to ARP Cache */
+			// 	arpCache.insert(destinationMAC, arpReplyIPAddress);
+			// 	return;
+			// }
+			// else
+			// {
+			// 	/* Drop Pakcet */
+			// 	return;
+			// }
+			return;
 		}
 		else if(etherPacket.getEtherType() != 0x800) {
 			/* Not IP Packet - Dropping */
@@ -424,7 +425,7 @@ public class Router extends Device
 		/* CHECK 6 : Checking non-existent Host in any network connected to Router */
 		ArpEntry ae = arpCache.lookup(nextHopIPAddress);
 		if(ae == null) {
-			this.sendARPRequest(etherPacket, inIface, rEntry.getInterface(), nextHopIPAddress);
+			// this.sendARPRequest(etherPacket, inIface, rEntry.getInterface(), nextHopIPAddress);
 			this.sendICMPPacket(pkt, inIface, (byte)3, (byte)1);
 			/* No such host in the network - Dropping */
 			return;
