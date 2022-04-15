@@ -443,6 +443,7 @@ public class Router extends Device
 
 	/* Construct ICMP packet with given type and command values and send it */
 	public void sendICMPPacket(IPv4 pktIn, Iface inIface, byte type, byte code) {
+		System.out.println("send icmp packet");
 		Ethernet ether = new Ethernet();
 		IPv4 ip = new IPv4();
 		ICMP icmp = new ICMP();
