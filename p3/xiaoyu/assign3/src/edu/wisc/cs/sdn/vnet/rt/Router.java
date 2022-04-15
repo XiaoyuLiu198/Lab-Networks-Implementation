@@ -93,7 +93,7 @@ public class Router extends Device {
 			ARPs = new ArrayList<ARPREntry>();
 		}
 
-		public ARPREntry newARPRequest(int IP, Ethernet pkt, Iface inIface, Iface outIface) {
+		public ARPREntry newARPRu(int IP, Ethernet pkt, Iface inIface, Iface outIface) {
 			synchronized (this.ARPs) {
 				ARPREntry entry = new ARPREntry(IP, pkt, outIface, inIface);
 				ARPs.add(entry);
@@ -420,12 +420,6 @@ public class Router extends Device {
 			for (i = 0, j = 4; i < (pkt.getHeaderLength() * 4); i++, j++) {
 				inData[j] = ipheaderpay[i];
 			}
-			// k = i;
-			// while (k < (i + 8)) {
-			// 	inData[j] = ipheaderpay[k];
-			// 	j++;
-			// 	k++;
-			// }
 			for(k = j; k < len; k ++){
 				inData[k] = ipheaderpay[i];
 				i++;
@@ -533,25 +527,6 @@ public class Router extends Device {
 			return null;
 		}
 		return ae.getMac();
-	}
-
-	// update arp table
-	public void arpupdate(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
-		ARPREntry entry;
-		synchronized (arpTable) {
-			for (ARPREntry ARE : arpTable.ARPs) {
-				if (ARE.IPAddress == IP) {
-					etherwrap i = new etherwrap(etherPacket, inIface);
-					ARE.etherPktl.add(i);
-					return;
-				}
-			}
-
-			entry = arpTable.newARPRequest(IP, etherPacket, inIface, outIface);
-		}
-		Entryto timeout = new Entryto(entry);
-		Thread t = new Thread(timeout);
-		t.start();
 	}
 
 	public void sendRIPPacket(byte command, int type, int sourceIPAddress, MACAddress sourceMACAddress, Iface inIface) {
@@ -750,6 +725,24 @@ public class Router extends Device {
 				}
 			}
 		}
+	}
+
+	// update arp table
+	public void arpupdate(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
+		ARPREntry entry;
+		synchronized (arpTable) {
+			for (ARPREntry ARE : arpTable.ARPs) {
+				if (ARE.IPAddress == IP) {
+					etherwrap i = new etherwrap(etherPacket, inIface);
+					ARE.etherPktl.add(i);
+					return;
+				}
+			}
+			entry = arpTable.newARPRu(IP, etherPacket, inIface, outIface);
+		}
+		Entryto timeout = new Entryto(entry);
+		Thread t = new Thread(timeout);
+		t.start();
 	}
 
 	class DVTableto implements Runnable {
