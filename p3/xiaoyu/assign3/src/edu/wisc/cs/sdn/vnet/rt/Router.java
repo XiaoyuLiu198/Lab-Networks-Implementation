@@ -80,29 +80,6 @@ public class Router extends Device
 			this.nTry = 3;
 			this.destinationMAC = null;
 		}
-	
-		// public void addPacketQueue(Ethernet pkt, Iface outIface, Iface inIface) {
-		// 	synchronized(this) {
-		// 		etherwrap infoNode = new etherwrap(pkt, inIface);
-		// 		this.etherPktl.add(infoNode);
-		// 		// for(etherwrap e: etherPktl){
-		// 		// 	// etherwrap e = etherPktl.get(i);
-		// 		// 	IPv4 pkt1 = (IPv4)e.pkt.getPayload();
-		// 		// }
-		// 		// Iterator<etherwrap> itr = etherPktl.iterator();
-		// 		// while (itr.hasNext()) {
-		// 		// 	etherwrap e = itr.next();
-		// 		// 	IPv4 pkt_now = (IPv4)e.pkt.getPayload();
-		// 		// }
-		// 	}
-		// }
-	
-		// public void disable(MACAddress destinationMAC) {
-		// 	synchronized(this) {
-		// 		this.nTry = -1;
-		// 		this.destinationMAC = destinationMAC;
-		// 	}
-		// }
 	}
 
 	public class ARPRTable {
@@ -200,6 +177,7 @@ public class Router extends Device
 			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
 			if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
 				/* Send ARP Reply */
+				System.out.println("need to send arp reply");
 				this.sendARPReply(etherPacket, arpPacket, inIface);
 				return;
 			}
