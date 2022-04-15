@@ -515,7 +515,10 @@ public class Router extends Device
 		}
 		ArpEntry arpEntry = this.arpCache.lookup(nextHopIPAddress);
         if (null == arpEntry)
-        { return; }
+        { 
+			System.out.println("no entry");
+			return; 
+		}
         ether.setDestinationMACAddress(arpEntry.getMac().toBytes());
 		// ether.setDestinationMACAddress(destMAC.toString());
 		System.out.println("icmp combined");
