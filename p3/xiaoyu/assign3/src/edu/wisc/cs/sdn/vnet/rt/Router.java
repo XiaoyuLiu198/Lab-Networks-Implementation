@@ -500,13 +500,14 @@ public class Router extends Device
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
 		MACAddress destMAC = findMACFromRTLookUp(pktIn.getSourceAddress());
 		if(destMAC == null) {
+			System.out.println("destmac check");
 			RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
 			/* Find the next hop IP Address */
 			int nextHopIPAddress = rEntry.getGatewayAddress();
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
 			}
-			this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+			// this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
 			return;
 		}
 		// RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
@@ -598,31 +599,31 @@ public class Router extends Device
 	}
 
 	/* ARP Reply */
-	public void sendARPReply(Ethernet inEtherPkt, ARP inArpPkt, Iface inIface) {
-		Ethernet ether = new Ethernet();
-		ARP arpPkt = new ARP();
+	// public void sendARPReply(Ethernet inEtherPkt, ARP inArpPkt, Iface inIface) {
+	// 	Ethernet ether = new Ethernet();
+	// 	ARP arpPkt = new ARP();
 
-		/* Construct Ethernet header */
-		ether.setEtherType(Ethernet.TYPE_ARP);
-		ether.setSourceMACAddress(inIface.getMacAddress().toString());
-		ether.setDestinationMACAddress(inEtherPkt.getSourceMACAddress());
+	// 	/* Construct Ethernet header */
+	// 	ether.setEtherType(Ethernet.TYPE_ARP);
+	// 	ether.setSourceMACAddress(inIface.getMacAddress().toString());
+	// 	ether.setDestinationMACAddress(inEtherPkt.getSourceMACAddress());
 
-		/* ARP Header */
-		arpPkt.setHardwareType(ARP.HW_TYPE_ETHERNET);
-		arpPkt.setProtocolType(ARP.PROTO_TYPE_IP);
-		arpPkt.setHardwareAddressLength((byte)Ethernet.DATALAYER_ADDRESS_LENGTH);
-		arpPkt.setProtocolAddressLength((byte)4);
-		arpPkt.setOpCode(ARP.OP_REPLY);
-		arpPkt.setSenderHardwareAddress(inIface.getMacAddress().toBytes());
-		arpPkt.setSenderProtocolAddress(inIface.getIpAddress());
-		arpPkt.setTargetHardwareAddress(inArpPkt.getSenderHardwareAddress());
-		arpPkt.setTargetProtocolAddress(inArpPkt.getSenderProtocolAddress());
+	// 	/* ARP Header */
+	// 	arpPkt.setHardwareType(ARP.HW_TYPE_ETHERNET);
+	// 	arpPkt.setProtocolType(ARP.PROTO_TYPE_IP);
+	// 	arpPkt.setHardwareAddressLength((byte)Ethernet.DATALAYER_ADDRESS_LENGTH);
+	// 	arpPkt.setProtocolAddressLength((byte)4);
+	// 	arpPkt.setOpCode(ARP.OP_REPLY);
+	// 	arpPkt.setSenderHardwareAddress(inIface.getMacAddress().toBytes());
+	// 	arpPkt.setSenderProtocolAddress(inIface.getIpAddress());
+	// 	arpPkt.setTargetHardwareAddress(inArpPkt.getSenderHardwareAddress());
+	// 	arpPkt.setTargetProtocolAddress(inArpPkt.getSenderProtocolAddress());
 
-		/* Set Ethernet Payload */
-		ether.setPayload(arpPkt);
-		/* Send ARP Reply */
-		sendPacket(ether, inIface);
-	}
+	// 	/* Set Ethernet Payload */
+	// 	ether.setPayload(arpPkt);
+	// 	/* Send ARP Reply */
+	// 	sendPacket(ether, inIface);
+	// }
 
 	/* ARP Request */
 	public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
