@@ -1,6 +1,6 @@
 package edu.wisc.cs.sdn.vnet.rt;
 
-import net.floodlightcontroller.packet.IPv4;
+// import net.floodlightcontroller.packet.IPv4;
 public class DistanceVectorEntry
 {
 	int IPAddress;
@@ -16,15 +16,15 @@ public class DistanceVectorEntry
 		this.valid = valid;
 	}
 
-	public void updateTime() {
-		synchronized(this) {
-			this.time = System.currentTimeMillis();
-		}
-	}
+	// public void updateTime() {
+	// 	synchronized(this) {
+	// 		this.time = System.currentTimeMillis();
+	// 	}
+	// }
 
-	public String toString() {
-		// IPv4 dummy = new IPv4();
-		String out = IPv4.fromIPv4Address(this.IPAddress) + "\t" + this.metric;
-		return out;
-	}
+	// public String toString() {
+	// 	// IPv4 dummy = new IPv4();
+	// 	String out = IPv4.fromIPv4Address(this.IPAddress) + "\t" + this.metric;
+	// 	return out;
+	// }
 }

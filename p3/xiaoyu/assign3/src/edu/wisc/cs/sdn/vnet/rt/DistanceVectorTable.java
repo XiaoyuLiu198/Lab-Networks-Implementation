@@ -12,7 +12,7 @@ public class DistanceVectorTable
 		this.DVTable = new ArrayList<DistanceVectorEntry>();
 	}
 
-	public void addDVTableEntry(DistanceVectorEntry entry)
+	public void addtoDV(DistanceVectorEntry entry)
 	{
 		DVTable.add(entry);
 	}

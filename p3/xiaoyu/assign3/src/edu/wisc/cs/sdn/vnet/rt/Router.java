@@ -110,7 +110,7 @@ public class Router extends Device
 			int subnet = entry.getValue().getIpAddress() & entry.getValue().getSubnetMask();
 			this.routeTable.insert(subnet, 0, entry.getValue().getSubnetMask(), entry.getValue());
 			DistanceVectorEntry e = new DistanceVectorEntry(subnet, 1, -1);
-			this.distanceVectorTable.addDVTableEntry(e);
+			this.distanceVectorTable.addtoDV(e);
 		}
 
 		/* Broadcast DV Info in RIP packets */
@@ -239,7 +239,8 @@ public class Router extends Device
 						for(DistanceVectorEntry dvEntry : distanceVectorTable.DVTable) {
 							synchronized(dvEntry) {
 							if(dvEntry.IPAddress == ripEntry.getAddress()) {
-								dvEntry.updateTime();
+								// dvEntry.updateTime();
+								dvEntry.time = System.currentTimeMillis();
 								find = true;
 								if(dvEntry.metric > (ripEntry.getMetric() + 1)) {
 									updated = true;
@@ -253,7 +254,7 @@ public class Router extends Device
 						if(find == false) {
 							updated = true;
 							DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(), ripEntry.getMetric()+1, 1);
-							distanceVectorTable.addDVTableEntry(newDVEntry);
+							distanceVectorTable.addtoDV(newDVEntry);
 							DVEntryto TOThreadObj = new DVEntryto(newDVEntry);
 							Thread TOThread = new Thread(TOThreadObj);
 							TOThread.start();
@@ -285,7 +286,8 @@ public class Router extends Device
 								match = false;
 								for(DistanceVectorEntry dvEntry : distanceVectorTable.DVTable) {
 									if(dvEntry.IPAddress == ripEntry.getAddress()) {
-										dvEntry.updateTime();
+										// dvEntry.updateTime();
+										dvEntry.time = System.currentTimeMillis();
 										match = true;
 										if(dvEntry.metric > (ripEntry.getMetric() + 1)) {
 											updated = true;
@@ -298,7 +300,7 @@ public class Router extends Device
 								if(match == false) {
 									updated = true;
 									DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(), ripEntry.getMetric()+1, 1);
-									distanceVectorTable.addDVTableEntry(newDVEntry);
+									distanceVectorTable.addtoDV(newDVEntry);
 									DVEntryto TOThreadObj = new DVEntryto(newDVEntry);
 									Thread TOThread = new Thread(TOThreadObj);
 									TOThread.start();
