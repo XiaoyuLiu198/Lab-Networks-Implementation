@@ -470,8 +470,8 @@ public class Router extends Device
 		byte[] serializedIPPkt = pktIn.serialize();
 		int i, j, k;
 		for(i = 0, j = 4; i < (pktIn.getHeaderLength() * 4); i++, j++) {
-			System.out.println(i);
-			System.out.println(j);
+			// System.out.println(i);
+			// System.out.println(i);
 			icmpData[j] = serializedIPPkt[i];
 		}
 		/* 8 byte of IP playload */
@@ -629,6 +629,7 @@ public class Router extends Device
 
 	/* ARP Request */
 	public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
+		System.out.println("send arprequest line 632");
 		ARPRequestEntry entry;
 		synchronized(arpReqTable) {
 		for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
