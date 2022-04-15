@@ -202,7 +202,7 @@ public class Router extends Device
 		if(etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
 			// System.out.println("arp request sent");
 			ARP arpPacket = (ARP)etherPacket.getPayload();
-			IPv4 ipv4Packet = (IPv4)etherPacket.getPayload();
+			// IPv4 ipv4Packet = (IPv4)etherPacket.getPayload();
 			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
 			if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
 				/* Send ARP Reply */
@@ -236,7 +236,7 @@ public class Router extends Device
 			// 	/* Drop Pakcet */
 			// 	return;
 			// }
-			return;
+			// return;
 		}
 		else if(etherPacket.getEtherType() != 0x800) {
 			/* Not IP Packet - Dropping */
@@ -478,12 +478,14 @@ public class Router extends Device
 			k++;
 		}
 		data.setData(icmpData);
+		System.out.println("data combined");
 
 		/* IPv4 header construction */
 		ip.setTtl((byte)64);
 		ip.setProtocol(IPv4.PROTOCOL_ICMP);
 		ip.setSourceAddress(inIface.getIpAddress());
 		ip.setDestinationAddress(pktIn.getSourceAddress());
+		System.out.println("ip set header");
 
 		ether.setPayload(ip);
 		ip.setPayload(icmp);
