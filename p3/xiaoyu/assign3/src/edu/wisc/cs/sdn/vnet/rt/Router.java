@@ -247,7 +247,7 @@ public class Router extends Device {
 						if(find == false){
 							updated = true;
 							DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(), ripEntry.getMetric()+1, 1);
-							distanceVectorTable.addtoDV(entry);
+							distanceVectorTable.addtoDV(newDVEntry);
 							DVEntryto TOObj = new DVEntryto(newDVEntry);
 							Thread TOT = new Thread(TOObj);
 							TOT.start();
