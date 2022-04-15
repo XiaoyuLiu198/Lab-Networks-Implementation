@@ -426,8 +426,8 @@ public class Router extends Device {
 			// 	j++;
 			// 	k++;
 			// }
-			for(j < len; j ++){
-				inData[j] = ipheaderpay[i];
+			for(int k = j; k < len; k ++){
+				inData[k] = ipheaderpay[i];
 				i++;
 			}
 			data.setData(inData);
