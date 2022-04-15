@@ -619,7 +619,7 @@ public class Router extends Device
 		t.start();
 	}
 
-	public void sendARPRequestPacket(int IPAddress, Iface outIface, etherwrap p1) {
+	public void ARPRupdate(int IPAddress, Iface outIface, etherwrap p1) {
 		Ethernet ether = new Ethernet();
 		ARP pkt = new ARP();
 
@@ -729,7 +729,7 @@ public class Router extends Device
 					break;
 
 				synchronized(this.entry) {
-					sendARPRequestPacket(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktl.peek());
+					ARPRupdate(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktl.peek());
 				}
 				try {
 					Thread.sleep(1000);
@@ -772,6 +772,7 @@ public class Router extends Device
 							while(!entry.etherPktl.isEmpty()) {
 								etherwrap infoNode = entry.etherPktl.poll();
 								IPv4 myPkt = (IPv4)infoNode.pkt.getPayload();
+								System.out.println("destination host not reachable");
 								sendICMPPacket(myPkt, infoNode.inIface, (byte)3, (byte)1);
 							}
 							iterator.remove();
