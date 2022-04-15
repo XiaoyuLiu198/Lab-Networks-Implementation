@@ -218,24 +218,24 @@ public class Router extends Device
 		int expectedRIPMulticastAddress = pkt.toIPv4Address("224.0.0.9");
 		/* Checking if the recived packet is RIP Request/Response */
 		if(pkt.getProtocol() == IPv4.PROTOCOL_UDP) {
-			UDP udpPkt = (UDP)pkt.getPayload();
-			if(udpPkt.getDestinationPort() == UDP.RIP_PORT) {
+			UDP udp = (UDP)pkt.getPayload();
+			if(udp.getDestinationPort() == UDP.RIP_PORT) {
 				if(pkt.getDestinationAddress() == expectedRIPMulticastAddress) {
 
-					boolean match = false, updated = false;
-					/* RIP Request/Response Packet */
-					RIPv2 ripPkt = (RIPv2)udpPkt.getPayload();
+					boolean find = false;
+					boolean updated = false;
+					RIPv2 rip = (RIPv2)udp.getPayload();
 
-					/* Check if there are any updates */
+					// check if any existing entry in dv table and update distance
 					synchronized(this.distanceVectorTable) {
-					for(RIPv2Entry ripEntry : ripPkt.getEntries()) {
-						match = false;
+					for(RIPv2Entry ripEntry : rip.getEntries()) {
+						find = false;
 						for(DistanceVectorEntry dvEntry : distanceVectorTable.DVTable) {
 							synchronized(dvEntry) {
 							if(dvEntry.IPAddress == ripEntry.getAddress()) {
 								/* Refresh DV Entry */
 								dvEntry.updateTime();
-								match = true;
+								find = true;
 								if(dvEntry.distance > (ripEntry.getMetric() + 1)) {
 									updated = true;
 									dvEntry.distance = ripEntry.getMetric() + 1;
@@ -246,7 +246,7 @@ public class Router extends Device
 							}
 							}
 						}
-						if(match == false) {
+						if(find == false) {
 							updated = true;
 							DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(), ripEntry.getMetric()+1, 1);
 							distanceVectorTable.addDVTableEntry(newDVEntry);
@@ -274,7 +274,7 @@ public class Router extends Device
 							/* Check if there are any updates */
 							/* Refresh DV Entry */
 							boolean match = false, updated = false;
-							RIPv2 ripPkt = (RIPv2)udpPkt.getPayload();
+							RIPv2 ripPkt = (RIPv2)udp.getPayload();
 
 							System.out.println("RIP Entries");
 							System.out.println(ripPkt);
@@ -313,15 +313,11 @@ public class Router extends Device
 							//sendRIPPacketUnicast((byte)2, pkt.getSourceAddress(), etherPacket.getSourceMAC(), inIface);
 							return;
 					}
-					/* Not destinerd for Router IP */
+					
 				}
-				/* Not a Multicast Address */
-			} else {
-				/* Not a RIP */
-			}
-		} else {
-			/* Not a UDP */
-		}
+				
+			} else {}
+		} else {}
 
 		/* CHECK 2 : Checksum Validation */
 		short actualCheckSum = pkt.getChecksum();
@@ -413,43 +409,41 @@ public class Router extends Device
 	}}
 
 	/* Construct ICMP packet with given type and command values and send it */
-	public void sendICMPPacket(IPv4 pktIn, Iface inIface, byte type, byte code) {
+	public void sendICMPPacket(IPv4 pkt, Iface inIface, byte type, byte code) {
 		Ethernet ether = new Ethernet();
 		IPv4 ip = new IPv4();
 		ICMP icmp = new ICMP();
 		Data data = new Data();
 
-		/* ICMP Header construction */
+		// prepare icmp header
 		icmp.setIcmpType(type);
 		icmp.setIcmpCode(code);
 
-		/* ICMP Data construction */
-		int len = 4 /* 4 byte padding */ +
-			+ (pktIn.getHeaderLength() * 4) /* IP Header length*/ +
-			+ 8 /* 8 bytes of IP payload */;
-		byte[] icmpData = new byte[len];
-		/* Padding */
-		Arrays.fill(icmpData, 0, 4, (byte)0);
-		/* IP Header copying */
-		byte[] serializedIPPkt = pktIn.serialize();
-		int i, j, k;
-		for(i = 0, j = 4; i < (pktIn.getHeaderLength() * 4); i++, j++) {
-			icmpData[j] = serializedIPPkt[i];
+		int len = 4 + (pkt.getHeaderLength() * 4) + 8;
+		byte[] inData = new byte[len];
+		Arrays.fill(inData, 0, 4, (byte)0);
+		byte[] ipheaderpay = pkt.serialize();
+		for(int i = 0; i < len; i++){
+			inData[i+4] = ipheaderpay[i];
 		}
-		/* 8 byte of IP playload */
-		k = i;
-		while(k < (i + 8)) {
-			icmpData[j] = serializedIPPkt[k];
-			j++;
-			k++;
-		}
-		data.setData(icmpData);
+		// int i, j, k;
+		// for(i = 0, j = 4; i < (pkt.getHeaderLength() * 4); i++, j++) {
+		// 	inData[j] = ipheaderpay[i];
+		// }
+		// /* 8 byte of IP playload */
+		// k = i;
+		// while(k < (i + 8)) {
+		// 	inData[j] = ipheaderpay[k];
+		// 	j++;
+		// 	k++;
+		// }
+		data.setData(inData);
 
 		/* IPv4 header construction */
 		ip.setTtl((byte)64);
 		ip.setProtocol(IPv4.PROTOCOL_ICMP);
 		ip.setSourceAddress(inIface.getIpAddress());
-		ip.setDestinationAddress(pktIn.getSourceAddress());
+		ip.setDestinationAddress(pkt.getSourceAddress());
 
 		ether.setPayload(ip);
 		ip.setPayload(icmp);
@@ -459,13 +453,13 @@ public class Router extends Device
 		/* Ethernet header construction */
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
-		MACAddress destMAC = findMACFromRTLookUp(pktIn.getSourceAddress());
+		MACAddress destMAC = findMACFromRTLookUp(pkt.getSourceAddress());
 		if(destMAC == null) {
-			RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
+			RouteEntry rEntry = routeTable.lookup(pkt.getSourceAddress());
 			/* Find the next hop IP Address */
 			int nextHopIPAddress = rEntry.getGatewayAddress();
 			if(nextHopIPAddress == 0){
-				nextHopIPAddress = pktIn.getSourceAddress();
+				nextHopIPAddress = pkt.getSourceAddress();
 			}
 			this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
 			return;
@@ -544,32 +538,6 @@ public class Router extends Device
 		return ae.getMac();
 	}
 
-	/* ARP Reply */
-	// public void sendARPReply(Ethernet inEtherPkt, ARP inArpPkt, Iface inIface) {
-	// 	Ethernet ether = new Ethernet();
-	// 	ARP arpPkt = new ARP();
-
-	// 	/* Construct Ethernet header */
-	// 	ether.setEtherType(Ethernet.TYPE_ARP);
-	// 	ether.setSourceMACAddress(inIface.getMacAddress().toString());
-	// 	ether.setDestinationMACAddress(inEtherPkt.getSourceMACAddress());
-
-	// 	/* ARP Header */
-	// 	arpPkt.setHardwareType(ARP.HW_TYPE_ETHERNET);
-	// 	arpPkt.setProtocolType(ARP.PROTO_TYPE_IP);
-	// 	arpPkt.setHardwareAddressLength((byte)Ethernet.DATALAYER_ADDRESS_LENGTH);
-	// 	arpPkt.setProtocolAddressLength((byte)4);
-	// 	arpPkt.setOpCode(ARP.OP_REPLY);
-	// 	arpPkt.setSenderHardwareAddress(inIface.getMacAddress().toBytes());
-	// 	arpPkt.setSenderProtocolAddress(inIface.getIpAddress());
-	// 	arpPkt.setTargetHardwareAddress(inArpPkt.getSenderHardwareAddress());
-	// 	arpPkt.setTargetProtocolAddress(inArpPkt.getSenderProtocolAddress());
-
-	// 	/* Set Ethernet Payload */
-	// 	ether.setPayload(arpPkt);
-	// 	/* Send ARP Reply */
-	// 	sendPacket(ether, inIface);
-	// }
 
 	/* ARP Request */
 	public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
