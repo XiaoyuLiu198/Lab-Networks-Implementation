@@ -470,6 +470,8 @@ public class Router extends Device
 		byte[] serializedIPPkt = pktIn.serialize();
 		int i, j, k;
 		for(i = 0, j = 4; i < (pktIn.getHeaderLength() * 4); i++, j++) {
+			System.out.println(i);
+			System.out.println(j);
 			icmpData[j] = serializedIPPkt[i];
 		}
 		/* 8 byte of IP playload */
