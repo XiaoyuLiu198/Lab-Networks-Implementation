@@ -334,7 +334,7 @@ public class Router extends Device
 		currentTTL--;
 		if(currentTTL == 0) {
 			/* TTL 0 - ICMP TLE message to sender */
-			this.sendICMPPacket(pkt, inIface, (byte)11, (byte)0);
+			this.sendICMPPacket(pkt, inIface, (byte)11, (byte)0, false);
 			return;
 		}
 
@@ -349,7 +349,7 @@ public class Router extends Device
 				/* Packet Destined for Routers IP - Dropping */
 				byte protocolType = pkt.getProtocol();
 				if(protocolType == IPv4.PROTOCOL_TCP || protocolType == IPv4.PROTOCOL_UDP){
-					this.sendICMPPacket(pkt, inIface, (byte)3, (byte)3);
+					this.sendICMPPacket(pkt, inIface, (byte)3, (byte)3, false);
 				}
 				else if(protocolType == IPv4.PROTOCOL_ICMP) {
 					ICMP icmpPkt = (ICMP)pkt.getPayload();
@@ -367,7 +367,7 @@ public class Router extends Device
 		if(rEntry == null) {
 			/* No matching route table entry */
 			/* Send ICMP Error Reply as Destination Net Unreachable */
-			this.sendICMPPacket(pkt, inIface, (byte)3, (byte)0);
+			this.sendICMPPacket(pkt, inIface, (byte)3, (byte)0, false);
 			return;
 		}
 
@@ -409,7 +409,7 @@ public class Router extends Device
 	}}
 
 	/* Construct ICMP packet with given type and command values and send it */
-	public void sendICMPPacket(IPv4 pkt, Iface inIface, byte type, byte code) {
+	public void sendICMPPacket(IPv4 pkt, Iface inIface, byte type, byte code, boolean echo) {
 		Ethernet ether = new Ethernet();
 		IPv4 ip = new IPv4();
 		ICMP icmp = new ICMP();
@@ -419,48 +419,63 @@ public class Router extends Device
 		icmp.setIcmpType(type);
 		icmp.setIcmpCode(code);
 
-		int len = 4 + (pkt.getHeaderLength() * 4) + 8;
-		byte[] inData = new byte[len];
-		Arrays.fill(inData, 0, 4, (byte)0);
-		byte[] ipheaderpay = pkt.serialize();
-		// for(int i = 0; i < len; i++){
-		// 	inData[i+4] = ipheaderpay[i];
-		// }
-		int i, j, k;
-		for(i = 0, j = 4; i < (pkt.getHeaderLength() * 4); i++, j++) {
-			inData[j] = ipheaderpay[i];
+		if(echo == false){
+			int len = 4 + (pkt.getHeaderLength() * 4) + 8;
+			byte[] inData = new byte[len];
+			Arrays.fill(inData, 0, 4, (byte)0);
+			byte[] ipheaderpay = pkt.serialize();
+			// for(int i = 0; i < len; i++){
+			// 	inData[i+4] = ipheaderpay[i];
+			// }
+			int i, j, k;
+			for(i = 0, j = 4; i < (pkt.getHeaderLength() * 4); i++, j++) {
+				inData[j] = ipheaderpay[i];
+			}
+			k = i;
+			while(k < (i + 8)) {
+				inData[j] = ipheaderpay[k];
+				j++;
+				k++;
+			}
+			data.setData(inData);
 		}
-		k = i;
-		while(k < (i + 8)) {
-			inData[j] = ipheaderpay[k];
-			j++;
-			k++;
+		else{
+			ICMP icmpp = (ICMP)pkt.getPayload();
+			byte[] icmpheaderpay = icmpp.getPayload().serialize();
+			data.setData(icmpheaderpay);
 		}
-		data.setData(inData);
 
-		/* IPv4 header construction */
+		// prepare ipv4 header
 		ip.setTtl((byte)64);
 		ip.setProtocol(IPv4.PROTOCOL_ICMP);
-		ip.setSourceAddress(inIface.getIpAddress());
+		if(echo == false){
+			ip.setSourceAddress(inIface.getIpAddress());
+		}
+		else{
+			ip.setSourceAddress(pkt.getDestinationAddress());
+		}
 		ip.setDestinationAddress(pkt.getSourceAddress());
 
 		ether.setPayload(ip);
 		ip.setPayload(icmp);
 		icmp.setPayload(data);
 
-		/* Ether packet constructed */
-		/* Ethernet header construction */
+		// prepare ether header
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
 		MACAddress destMAC = findMACFromRTLookUp(pkt.getSourceAddress());
 		if(destMAC == null) {
 			RouteEntry rEntry = routeTable.lookup(pkt.getSourceAddress());
-			/* Find the next hop IP Address */
 			int nextHopIPAddress = rEntry.getGatewayAddress();
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pkt.getSourceAddress();
 			}
-			this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+			if(echo == false){
+				this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+			}
+			else{
+				this.sendARPRequest(ether, inIface, inIface, nextHopIPAddress);
+			}
 			return;
 		}
 		ether.setDestinationMACAddress(destMAC.toString());
@@ -712,7 +727,7 @@ public class Router extends Device
 								etherwrap infoNode = entry.etherPktl.poll();
 								IPv4 myPkt = (IPv4)infoNode.pkt.getPayload();
 								System.out.println("destination host not reachable");
-								sendICMPPacket(myPkt, infoNode.inIface, (byte)3, (byte)1);
+								sendICMPPacket(myPkt, infoNode.inIface, (byte)3, (byte)1, false);
 							}
 							iterator.remove();
 						}
