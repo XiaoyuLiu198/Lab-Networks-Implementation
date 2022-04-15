@@ -27,7 +27,7 @@ public class Router extends Device
 	/** ARP cache for the router */
 	private ArpCache arpCache;
 	// ARP table
-	private ARPRTable arpReqTable;
+	private ARPRTable arpTable;
 	
 	// Distance Vector Table
 	private DistanceVectorTable distanceVectorTable;
@@ -41,8 +41,8 @@ public class Router extends Device
 		super(host,logfile);
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
-		this.arpReqTable = new ARPRTable();
-		TableThreadImpl obj = new TableThreadImpl(this.arpReqTable);
+		this.arpTable = new ARPRTable();
+		TableThreadImpl obj = new TableThreadImpl(this.arpTable);
 		Thread t = new Thread(obj);
 		t.start();
 		this.distanceVectorTable = new DistanceVectorTable();
@@ -188,8 +188,8 @@ public class Router extends Device
 				MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
 
 				/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
-				synchronized(arpReqTable) {
-				for(ARPREntry ARE : arpReqTable.ARPRequestTab) {
+				synchronized(arpTable) {
+				for(ARPREntry ARE : arpTable.ARPRequestTab) {
 					if(ARE.IPAddress == arpReplyIPAddress) {
 						ARE.nTry = -1;
 						ARE.destinationMAC = destinationMAC;
@@ -391,7 +391,7 @@ public class Router extends Device
 		/* CHECK 6 : Checking non-existent Host in any network connected to Router */
 		ArpEntry ae = arpCache.lookup(nextHopIPAddress);
 		if(ae == null) {
-			this.sendARPRequest(etherPacket, inIface, rEntry.getInterface(), nextHopIPAddress);
+			this.arpupdate(etherPacket, inIface, rEntry.getInterface(), nextHopIPAddress);
 			//this.sendICMPPacket(pkt, inIface, (byte)3, (byte)1);
 			/* No such host in the network - Dropping */
 			return;
@@ -471,10 +471,10 @@ public class Router extends Device
 				nextHopIPAddress = pkt.getSourceAddress();
 			}
 			if(echo == false){
-				this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+				this.arpupdate(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
 			}
 			else{
-				this.sendARPRequest(ether, inIface, inIface, nextHopIPAddress);
+				this.arpupdate(ether, inIface, inIface, nextHopIPAddress);
 			}
 			return;
 		}
@@ -519,7 +519,7 @@ public class Router extends Device
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
 			}
-			this.sendARPRequest(ether, inIface, inIface, nextHopIPAddress);
+			this.arpupdate(ether, inIface, inIface, nextHopIPAddress);
 			return;
 		}
 		ether.setDestinationMACAddress(destMAC.toString());
@@ -546,20 +546,19 @@ public class Router extends Device
 	}
 
 
-	/* ARP Request */
-	public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
+	// update arp table
+	public void arpupdate(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
 		ARPREntry entry;
-		synchronized(arpReqTable) {
-		for(ARPREntry ARE : arpReqTable.ARPRequestTab) {
+		synchronized(arpTable) {
+		for(ARPREntry ARE : arpTable.ARPRequestTab) {
 			if(ARE.IPAddress == IP) {
-				// ARE.addPacketQueue(etherPacket, outIface, inIface);
 				etherwrap i = new etherwrap(etherPacket, inIface);
 				ARE.etherPktl.add(i);
 				return;
 			}
 		}
 
-		entry = arpReqTable.newARPRequest(IP, etherPacket, inIface, outIface);
+		entry = arpTable.newARPRequest(IP, etherPacket, inIface, outIface);
 		}
 		EntryThreadImpl obj = new EntryThreadImpl(entry);
 		Thread t = new Thread(obj);
