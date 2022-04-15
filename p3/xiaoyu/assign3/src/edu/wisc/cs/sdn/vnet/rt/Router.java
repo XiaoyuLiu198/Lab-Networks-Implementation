@@ -354,8 +354,7 @@ public class Router extends Device
 				else if(protocolType == IPv4.PROTOCOL_ICMP) {
 					ICMP icmpPkt = (ICMP)pkt.getPayload();
 					if(icmpPkt.getIcmpType() == (byte)8) {
-						this.sendEchoReplyPacket(pkt, inIface, (byte)0, (byte)0);
-						// this.sendICMPPacket(pkt, inIface, (byte)0, (byte)0, true);
+						this.sendEchoReply(pkt, inIface, (byte)0, (byte)0);
 					}
 				}
 				return;
@@ -464,7 +463,7 @@ public class Router extends Device
 		// prepare ether header
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
-		MACAddress destMAC = findMACFromRTLookUp(pkt.getSourceAddress());
+		MACAddress destMAC = findmac(pkt.getSourceAddress());
 		if(destMAC == null) {
 			RouteEntry rEntry = routeTable.lookup(pkt.getSourceAddress());
 			int nextHopIPAddress = rEntry.getGatewayAddress();
@@ -485,22 +484,22 @@ public class Router extends Device
 		sendPacket(ether, inIface);
 	}
 
-	public void sendEchoReplyPacket(IPv4 pktIn, Iface inIface, byte type, byte code) {
+	public void sendEchoReply(IPv4 pktIn, Iface inIface, byte type, byte code) {
 		Ethernet ether = new Ethernet();
 		IPv4 ip = new IPv4();
 		ICMP icmp = new ICMP();
 		Data data = new Data();
 
-		/* ICMP Header construction */
+		// prepare icmp header
 		icmp.setIcmpType(type);
 		icmp.setIcmpCode(code);
 
-		/* ICMP Data construction */
+		// prepare payload
 		ICMP inIcmpPkt = (ICMP)pktIn.getPayload();
 		byte[] inIcmpPktPayload = inIcmpPkt.getPayload().serialize();
 		data.setData(inIcmpPktPayload);
 
-		/* IPv4 header construction */
+		// prepare ipv4 header
 		ip.setTtl((byte)64);
 		ip.setProtocol(IPv4.PROTOCOL_ICMP);
 		ip.setSourceAddress(pktIn.getDestinationAddress());
@@ -510,13 +509,12 @@ public class Router extends Device
 		ip.setPayload(icmp);
 		icmp.setPayload(data);
 
-		/* Ethernet header construction */
+		// prepare ether header
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
-		MACAddress destMAC = findMACFromRTLookUp(pktIn.getSourceAddress());
+		MACAddress destMAC = findmac(pktIn.getSourceAddress());
 		if(destMAC == null) {
 			RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
-			/* Find the next hop IP Address */
 			int nextHopIPAddress = rEntry.getGatewayAddress();
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
@@ -526,30 +524,24 @@ public class Router extends Device
 		}
 		ether.setDestinationMACAddress(destMAC.toString());
 
-		/* Send ICMP packet */
 		sendPacket(ether, inIface);
 	}
 
-	/* Wrapper Function for IP lookup + ARP cache lookup */
-	public MACAddress findMACFromRTLookUp(int ip) {
+	// find mac address when lookup in router table then arpcache table
+	public MACAddress findmac(int ip) {
 
-		RouteEntry rEntry = routeTable.lookup(ip);
-		if(rEntry == null) {
-			/* No matching route table entry */
+		RouteEntry re = routeTable.lookup(ip);
+		if(re == null) {
 			return null;
 		}
-		/* Find the next hop IP Address */
-		int nextHopIPAddress = rEntry.getGatewayAddress();
+		int nextHopIPAddress = re.getGatewayAddress();
 		if(nextHopIPAddress == 0){
 			nextHopIPAddress = ip;
 		}
-		/* Find the next hop MAC address from ARP Cache */
 		ArpEntry ae = arpCache.lookup(nextHopIPAddress);
 		if(ae == null) {
-			/* No such host in the network - Dropping */
 			return null;
 		}
-		/* Next hop MAC addresses */
 		return ae.getMac();
 	}
 
