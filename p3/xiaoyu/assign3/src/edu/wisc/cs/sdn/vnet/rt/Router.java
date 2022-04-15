@@ -100,13 +100,13 @@ public class Router extends Device
 	}
 	
 	/** Init Router Table */
-	public void initRouterTable()
+	public void initrip()
 	{
 		System.out.println("Initializing Route Table");
 		for(Map.Entry<String, Iface> entry: this.getInterfaces().entrySet()){
-			int subnetNumber = entry.getValue().getIpAddress() & entry.getValue().getSubnetMask();
-			this.routeTable.insert(subnetNumber, 0, entry.getValue().getSubnetMask(), entry.getValue());
-			DistanceVectorEntry e = new DistanceVectorEntry(subnetNumber, 1, -1);
+			int subnet = entry.getValue().getIpAddress() & entry.getValue().getSubnetMask();
+			this.routeTable.insert(subnet, 0, entry.getValue().getSubnetMask(), entry.getValue());
+			DistanceVectorEntry e = new DistanceVectorEntry(subnet, 1, -1);
 			this.distanceVectorTable.addDVTableEntry(e);
 		}
 
@@ -212,6 +212,10 @@ public class Router extends Device
 			/* Not IP Packet - Dropping */
 			return;
 		}
+		this.handleIpPacket(etherPacket, inIface);
+	}
+
+	public void handleIpPacket(Ethernet etherPacket, Iface inIface){
 		if(etherPacket.getEtherType() == Ethernet.TYPE_IPv4){
 		IPv4 pkt = (IPv4)etherPacket.getPayload();
 
@@ -361,48 +365,37 @@ public class Router extends Device
 			}
 		}
 
-		/* Forwarding Packets */
-		/* STEP 1 : Route Table Look up */
 		RouteEntry rEntry = routeTable.lookup(pkt.getDestinationAddress());
 		if(rEntry == null) {
-			/* No matching route table entry */
-			/* Send ICMP Error Reply as Destination Net Unreachable */
+			System.out.println("Destination Net Unreachable");
 			this.sendICMPPacket(pkt, inIface, (byte)3, (byte)0, false);
 			return;
 		}
 
 		/* CHECK 5 : Check if incoming and outgoing interfaces are same */
 		if(inIface.getName().equals(rEntry.getInterface().getName())){
-		/* Incoming Interface is same as outgoing interface - dropping */
 			return;
 		}
 
-		/* Outgoing router Interface MAC address */
 		MACAddress sourceMac = rEntry.getInterface().getMacAddress();
 		etherPacket.setSourceMACAddress(sourceMac.toString());
 
-		/* STEP 2 : Find the next hop IP Address */
 		int nextHopIPAddress = rEntry.getGatewayAddress();
 		if(nextHopIPAddress == 0){
 			nextHopIPAddress = pkt.getDestinationAddress();
 		}
 
-		/* Find the next hop MAC address from ARP Cache */
 		/* CHECK 6 : Checking non-existent Host in any network connected to Router */
 		ArpEntry ae = arpCache.lookup(nextHopIPAddress);
 		if(ae == null) {
 			this.arpupdate(etherPacket, inIface, rEntry.getInterface(), nextHopIPAddress);
 			//this.sendICMPPacket(pkt, inIface, (byte)3, (byte)1);
-			/* No such host in the network - Dropping */
 			return;
 		}
 
-		/* Next hop MAC addresses */
 		MACAddress destinationMac = ae.getMac();
-		/* STEP 3 : Update Ethernet Pakcet to send */
 		etherPacket.setDestinationMACAddress(destinationMac.toString());
 		
-		/* Send Packet on the interface found from Route Table */
 		sendPacket(etherPacket, rEntry.getInterface());
 
 		/********************************************************************/
@@ -768,14 +761,13 @@ public class Router extends Device
 						}
 				}
 				if(updated == true) {
-						/* RIP Response due to update */
 						sendRIPPacket((byte)2);
 				}
 
 				/* Periodic Updates */
 				long now = System.currentTimeMillis();
 				if((now - this.time) > 10000) {
-						/* Broadcast every 10 seconds */
+						// broadcast every 10 seconds
 						sendRIPPacket((byte)2);
 						this.time = System.currentTimeMillis();
 				}
