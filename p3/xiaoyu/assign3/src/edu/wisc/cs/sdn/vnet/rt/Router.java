@@ -226,7 +226,7 @@ public class Router extends Device
 		if(pkt.getProtocol() == IPv4.PROTOCOL_UDP) {
 			UDP udp = (UDP)pkt.getPayload();
 			if(udp.getDestinationPort() == UDP.RIP_PORT) {
-				if(pkt.getDestinationAddress() == braodcastip) {
+				if(pkt.getDestinationAddress() == pkt.toIPv4Address("224.0.0.9")) {
 
 					boolean find = false;
 					boolean updated = false;
