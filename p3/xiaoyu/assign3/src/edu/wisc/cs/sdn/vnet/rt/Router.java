@@ -178,7 +178,7 @@ public class Router extends Device
 			if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
 				/* Send ARP Reply */
 				System.out.println("need to send arp reply");
-				this.sendARPReply(etherPacket, arpPacket, inIface);
+				// this.sendARPReply(etherPacket, arpPacket, inIface);
 				return;
 			}
 			else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
