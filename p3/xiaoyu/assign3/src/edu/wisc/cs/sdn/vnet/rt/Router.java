@@ -3,7 +3,7 @@ package edu.wisc.cs.sdn.vnet.rt;
 import edu.wisc.cs.sdn.vnet.Device;
 import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
-// import edu.wisc.cs.sdn.vnet.rt.*;
+import edu.wisc.cs.sdn.vnet.rt.*;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.MACAddress;
@@ -26,11 +26,12 @@ public class Router extends Device
 	
 	/** ARP cache for the router */
 	private ArpCache arpCache;
+
+	/** ARP Request Table */
+	private ARPRequestTable arpReqTable;
 	
-	// Distance Vector Table
+	/** Distance Vector Table */
 	private DistanceVectorTable distanceVectorTable;
-	// arp table
-	private ARPTable arpReqTable;
 
 	/**
 	 * Creates a router for a specific host.
@@ -41,7 +42,7 @@ public class Router extends Device
 		super(host,logfile);
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
-		this.arpReqTable = new ARPTable();
+		this.arpReqTable = new ARPRequestTable();
 		TableThreadImpl obj = new TableThreadImpl(this.arpReqTable);
 		Thread t = new Thread(obj);
 		t.start();
@@ -53,75 +54,6 @@ public class Router extends Device
 	 */
 	public RouteTable getRouteTable()
 	{ return this.routeTable; }
-
-	class EthernetPktInfo {
-		Ethernet pkt;
-		Iface inIface;
-	
-		public EthernetPktInfo(Ethernet pkt, Iface inIface) {
-			this.pkt = pkt;
-			this.inIface = inIface;
-		}
-	}
-
-	public class ARPRequestEntry {
-		int IPAddress;
-		Queue<EthernetPktInfo> etherPktQ;
-		Iface outIface;
-	
-		/* Initial Value : 3
-		 * When ARP request send : value--
-		 * When ARP reply recieved : -1
-		*/
-		int nTry;
-		MACAddress destinationMAC;
-	
-		public ARPRequestEntry(int IP, Ethernet pkt, Iface outIface, Iface inIface) {
-			this.IPAddress = IP;
-			this.etherPktQ = new LinkedList<EthernetPktInfo>();
-			EthernetPktInfo infoNode = new EthernetPktInfo(pkt, inIface);
-			this.etherPktQ.add(infoNode);
-			this.outIface = outIface;
-			this.nTry = 3;
-			this.destinationMAC = null;
-		}
-	
-		public void addPacketQueue(Ethernet pkt, Iface outIface, Iface inIface) {
-			synchronized(this) {
-				EthernetPktInfo infoNode = new EthernetPktInfo(pkt, inIface);
-				this.etherPktQ.add(infoNode);
-				Iterator<EthernetPktInfo> itr = etherPktQ.iterator();
-				while (itr.hasNext()) {
-					EthernetPktInfo e = itr.next();
-					IPv4 pkt1 = (IPv4)e.pkt.getPayload();
-				}
-			}
-		}
-	
-		public void invalidateARPRequestEntry(MACAddress destinationMAC) {
-			synchronized(this) {
-				this.nTry = -1;
-				this.destinationMAC = destinationMAC;
-			}
-		}
-	}
-
-	public class ARPTable {
-		ArrayList<ARPRequestEntry> ARPRequestTab;
-	
-		public ARPTable() {
-			ARPRequestTab = new ArrayList<ARPRequestEntry>();
-		}
-	
-		public ARPRequestEntry newARPRequest(int IP, Ethernet pkt, Iface inIface, Iface outIface) {
-			synchronized(this.ARPRequestTab) {
-				ARPRequestEntry entry = new ARPRequestEntry(IP, pkt, outIface, inIface);
-				ARPRequestTab.add(entry);
-				return entry;
-			}
-		}
-	
-	}
 	
 	/** Init Router Table */
 	public void initRouterTable()
@@ -181,9 +113,6 @@ public class Router extends Device
 		System.out.println("----------------------------------");
 	}
 
-	
-	// private ARPTable arpTable;
-
 	/**
 	 * Handle an Ethernet packet received on a specific interface.
 	 * @param etherPacket the Ethernet packet that was received
@@ -200,14 +129,10 @@ public class Router extends Device
 		/* CHECK 1 : Ethernet Packet */
 		/* Handle ARP Request */
 		if(etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
-			// System.out.println("arp request sent");
 			ARP arpPacket = (ARP)etherPacket.getPayload();
-			// IPv4 ipv4Packet = (IPv4)etherPacket.getPayload();
 			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
 			if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
 				/* Send ARP Reply */
-				// System.out.println("arp request sent");
-				// this.sendICMPPacket(ipv4Packet, inIface, (byte)11, (byte)0);
 				this.sendARPReply(etherPacket, arpPacket, inIface);
 				return;
 			}
@@ -217,15 +142,15 @@ public class Router extends Device
 				int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
 				MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
 
-				// /* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
-				// synchronized(arpReqTable) {
-				// for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
-				// 	if(ARE.IPAddress == arpReplyIPAddress) {
-				// 		ARE.invalidateARPRequestEntry(destinationMAC);
-				// 		break;
-				// 	}
-				// }
-				// }
+				/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
+				synchronized(arpReqTable) {
+				for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
+					if(ARE.IPAddress == arpReplyIPAddress) {
+						ARE.invalidateARPRequestEntry(destinationMAC);
+						break;
+					}
+				}
+				}
 
 				/* Add MAC Address to ARP Cache */
 				arpCache.insert(destinationMAC, arpReplyIPAddress);
@@ -236,18 +161,11 @@ public class Router extends Device
 				/* Drop Pakcet */
 				return;
 			}
-			// return;
 		}
 		else if(etherPacket.getEtherType() != 0x800) {
 			/* Not IP Packet - Dropping */
 			return;
 		}
-		// if(etherPacket.getEtherType() != 0x800) {
-		// 		/* Not IP Packet - Dropping */
-		// 		return;
-		// }
-		if(etherPacket.getEtherType() == Ethernet.TYPE_IPv4){
-		System.out.println("get ip packet");
 		IPv4 pkt = (IPv4)etherPacket.getPayload();
 
 		int expectedRIPMulticastAddress = pkt.toIPv4Address("224.0.0.9");
@@ -430,8 +348,8 @@ public class Router extends Device
 		/* CHECK 6 : Checking non-existent Host in any network connected to Router */
 		ArpEntry ae = arpCache.lookup(nextHopIPAddress);
 		if(ae == null) {
-			// this.sendARPRequest(etherPacket, inIface, rEntry.getInterface(), nextHopIPAddress);
-			this.sendICMPPacket(pkt, inIface, (byte)3, (byte)1);
+			this.sendARPRequest(etherPacket, inIface, rEntry.getInterface(), nextHopIPAddress);
+			//this.sendICMPPacket(pkt, inIface, (byte)3, (byte)1);
 			/* No such host in the network - Dropping */
 			return;
 		}
@@ -442,14 +360,13 @@ public class Router extends Device
 		etherPacket.setDestinationMACAddress(destinationMac.toString());
 		
 		/* Send Packet on the interface found from Route Table */
-		sendPacket(etherPacket, rEntry.getInterface());}
+		sendPacket(etherPacket, rEntry.getInterface());
 
 		/********************************************************************/
 	}
 
 	/* Construct ICMP packet with given type and command values and send it */
 	public void sendICMPPacket(IPv4 pktIn, Iface inIface, byte type, byte code) {
-		System.out.println("send icmp packet");
 		Ethernet ether = new Ethernet();
 		IPv4 ip = new IPv4();
 		ICMP icmp = new ICMP();
@@ -470,8 +387,6 @@ public class Router extends Device
 		byte[] serializedIPPkt = pktIn.serialize();
 		int i, j, k;
 		for(i = 0, j = 4; i < (pktIn.getHeaderLength() * 4); i++, j++) {
-			// System.out.println(i);
-			// System.out.println(i);
 			icmpData[j] = serializedIPPkt[i];
 		}
 		/* 8 byte of IP playload */
@@ -482,19 +397,16 @@ public class Router extends Device
 			k++;
 		}
 		data.setData(icmpData);
-		System.out.println("data combined");
 
 		/* IPv4 header construction */
 		ip.setTtl((byte)64);
 		ip.setProtocol(IPv4.PROTOCOL_ICMP);
 		ip.setSourceAddress(inIface.getIpAddress());
 		ip.setDestinationAddress(pktIn.getSourceAddress());
-		System.out.println("ip set header");
 
 		ether.setPayload(ip);
 		ip.setPayload(icmp);
 		icmp.setPayload(data);
-		System.out.println("set payloads");
 
 		/* Ether packet constructed */
 		/* Ethernet header construction */
@@ -502,31 +414,16 @@ public class Router extends Device
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
 		MACAddress destMAC = findMACFromRTLookUp(pktIn.getSourceAddress());
 		if(destMAC == null) {
-			System.out.println("destmac");
 			RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
 			/* Find the next hop IP Address */
 			int nextHopIPAddress = rEntry.getGatewayAddress();
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
 			}
-			this.updatearpt(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+			this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
 			return;
 		}
-		// RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
-		// // Find the next hop IP Address
-		// int nextHopIPAddress = rEntry.getGatewayAddress();
-		// if(nextHopIPAddress == 0){
-		// 	nextHopIPAddress = pktIn.getSourceAddress();
-		// }
-		// ArpEntry arpEntry = this.arpCache.lookup(nextHopIPAddress);
-        // if (null == arpEntry)
-        // { 
-		// 	System.out.println("no entry");
-		// 	return; 
-		// }
-        // ether.setDestinationMACAddress(arpEntry.getMac().toBytes());
 		ether.setDestinationMACAddress(destMAC.toString());
-		System.out.println("icmp combined");
 
 		/* Send ICMP packet */
 		sendPacket(ether, inIface);
@@ -568,7 +465,7 @@ public class Router extends Device
 			if(nextHopIPAddress == 0){
 				nextHopIPAddress = pktIn.getSourceAddress();
 			}
-			this.updatearpt(ether, inIface, inIface, nextHopIPAddress);
+			this.sendARPRequest(ether, inIface, inIface, nextHopIPAddress);
 			return;
 		}
 		ether.setDestinationMACAddress(destMAC.toString());
@@ -628,8 +525,7 @@ public class Router extends Device
 	}
 
 	/* ARP Request */
-	public void updatearpt(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
-		System.out.println("send arpupdate");
+	public void sendARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int IP) {
 		ARPRequestEntry entry;
 		synchronized(arpReqTable) {
 		for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
@@ -691,8 +587,7 @@ public class Router extends Device
 				/* IP Packet */
 				IPv4 ipPkt = new IPv4();
 				ipPkt.setProtocol(IPv4.PROTOCOL_UDP);
-				// ipPkt.setTtl((byte)15);
-				ipPkt.setTtl((byte)64);
+				ipPkt.setTtl((byte)15);
 				ipPkt.setDestinationAddress("224.0.0.9");
 				ipPkt.setSourceAddress(entry.getValue().getIpAddress());
 				ipPkt.setPayload(udpPkt);
@@ -772,9 +667,9 @@ public class Router extends Device
 	}
 
 	class TableThreadImpl implements Runnable {
-		ARPTable table;
+		ARPRequestTable table;
 
-		public TableThreadImpl(ARPTable table) {
+		public TableThreadImpl(ARPRequestTable table) {
 			this.table = table;
 		}
 
