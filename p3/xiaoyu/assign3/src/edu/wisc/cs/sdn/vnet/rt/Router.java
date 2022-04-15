@@ -211,31 +211,31 @@ public class Router extends Device
 				this.sendARPReply(etherPacket, arpPacket, inIface);
 				return;
 			}
-			// else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
-			// 	/* Got ARP Reply */
-			// 	IPv4 dummyPkt = new IPv4();
-			// 	int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
-			// 	MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
+			else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
+				/* Got ARP Reply */
+				IPv4 dummyPkt = new IPv4();
+				int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
+				MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
 
-			// 	/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
-			// 	synchronized(arpReqTable) {
-			// 	for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
-			// 		if(ARE.IPAddress == arpReplyIPAddress) {
-			// 			ARE.invalidateARPRequestEntry(destinationMAC);
-			// 			break;
-			// 		}
-			// 	}
-			// 	}
+				/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
+				synchronized(arpReqTable) {
+				for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
+					if(ARE.IPAddress == arpReplyIPAddress) {
+						ARE.invalidateARPRequestEntry(destinationMAC);
+						break;
+					}
+				}
+				}
 
-			// 	/* Add MAC Address to ARP Cache */
-			// 	arpCache.insert(destinationMAC, arpReplyIPAddress);
-			// 	return;
-			// }
-			// else
-			// {
-			// 	/* Drop Pakcet */
-			// 	return;
-			// }
+				/* Add MAC Address to ARP Cache */
+				arpCache.insert(destinationMAC, arpReplyIPAddress);
+				return;
+			}
+			else
+			{
+				/* Drop Pakcet */
+				return;
+			}
 			// return;
 		}
 		else if(etherPacket.getEtherType() != 0x800) {
@@ -496,31 +496,31 @@ public class Router extends Device
 		/* Ethernet header construction */
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
-		// MACAddress destMAC = findMACFromRTLookUp(pktIn.getSourceAddress());
-		// if(destMAC == null) {
-		// 	RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
-		// 	/* Find the next hop IP Address */
-		// 	int nextHopIPAddress = rEntry.getGatewayAddress();
-		// 	if(nextHopIPAddress == 0){
-		// 		nextHopIPAddress = pktIn.getSourceAddress();
-		// 	}
-		// 	this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
-		// 	return;
+		MACAddress destMAC = findMACFromRTLookUp(pktIn.getSourceAddress());
+		if(destMAC == null) {
+			RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
+			/* Find the next hop IP Address */
+			int nextHopIPAddress = rEntry.getGatewayAddress();
+			if(nextHopIPAddress == 0){
+				nextHopIPAddress = pktIn.getSourceAddress();
+			}
+			this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+			return;
+		}
+		// RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
+		// // Find the next hop IP Address
+		// int nextHopIPAddress = rEntry.getGatewayAddress();
+		// if(nextHopIPAddress == 0){
+		// 	nextHopIPAddress = pktIn.getSourceAddress();
 		// }
-		RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
-		// Find the next hop IP Address
-		int nextHopIPAddress = rEntry.getGatewayAddress();
-		if(nextHopIPAddress == 0){
-			nextHopIPAddress = pktIn.getSourceAddress();
-		}
-		ArpEntry arpEntry = this.arpCache.lookup(nextHopIPAddress);
-        if (null == arpEntry)
-        { 
-			System.out.println("no entry");
-			return; 
-		}
-        ether.setDestinationMACAddress(arpEntry.getMac().toBytes());
-		// ether.setDestinationMACAddress(destMAC.toString());
+		// ArpEntry arpEntry = this.arpCache.lookup(nextHopIPAddress);
+        // if (null == arpEntry)
+        // { 
+		// 	System.out.println("no entry");
+		// 	return; 
+		// }
+        // ether.setDestinationMACAddress(arpEntry.getMac().toBytes());
+		ether.setDestinationMACAddress(destMAC.toString());
 		System.out.println("icmp combined");
 
 		/* Send ICMP packet */
