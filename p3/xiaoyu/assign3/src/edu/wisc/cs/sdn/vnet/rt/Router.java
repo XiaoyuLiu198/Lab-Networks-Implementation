@@ -219,12 +219,12 @@ public class Router extends Device
 		if(etherPacket.getEtherType() == Ethernet.TYPE_IPv4){
 		IPv4 pkt = (IPv4)etherPacket.getPayload();
 
-		int expectedRIPMulticastAddress = pkt.toIPv4Address("224.0.0.9");
+		int braodcastip = pkt.toIPv4Address("224.0.0.9");
 		/* Checking if the recived packet is RIP Request/Response */
 		if(pkt.getProtocol() == IPv4.PROTOCOL_UDP) {
 			UDP udp = (UDP)pkt.getPayload();
 			if(udp.getDestinationPort() == UDP.RIP_PORT) {
-				if(pkt.getDestinationAddress() == expectedRIPMulticastAddress) {
+				if(pkt.getDestinationAddress() == braodcastip) {
 
 					boolean find = false;
 					boolean updated = false;
@@ -237,7 +237,6 @@ public class Router extends Device
 						for(DistanceVectorEntry dvEntry : distanceVectorTable.DVTable) {
 							synchronized(dvEntry) {
 							if(dvEntry.IPAddress == ripEntry.getAddress()) {
-								/* Refresh DV Entry */
 								dvEntry.updateTime();
 								find = true;
 								if(dvEntry.distance > (ripEntry.getMetric() + 1)) {
@@ -245,7 +244,6 @@ public class Router extends Device
 									dvEntry.distance = ripEntry.getMetric() + 1;
 									routeTable.update(dvEntry.IPAddress, ripEntry.getSubnetMask(), pkt.getSourceAddress(), inIface);
 								} else {
-									//System.out.println("Matching IP found but no update");
 								}
 							}
 							}
@@ -274,9 +272,6 @@ public class Router extends Device
 						}
 					}
 					if(isRouterIP == true) {
-							/* RIP Request/Response Packet */
-							/* Check if there are any updates */
-							/* Refresh DV Entry */
 							boolean match = false, updated = false;
 							RIPv2 ripPkt = (RIPv2)udp.getPayload();
 
@@ -294,12 +289,10 @@ public class Router extends Device
 											dvEntry.distance = ripEntry.getMetric() + 1;
 											routeTable.update(dvEntry.IPAddress, ripEntry.getSubnetMask(), pkt.getSourceAddress(), inIface);
 										} else {
-											System.out.println("Matching IP found but no update");
 										}
 									}
 								}
 								if(match == false) {
-									System.out.println("New entry");
 									updated = true;
 									DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(), ripEntry.getMetric()+1, 1);
 									distanceVectorTable.addDVTableEntry(newDVEntry);
@@ -313,8 +306,6 @@ public class Router extends Device
 							if(updated == true) {
 								sendRIPPacket((byte)2);
 							}
-							/* RIP Unicast */
-							//sendRIPPacketUnicast((byte)2, pkt.getSourceAddress(), etherPacket.getSourceMAC(), inIface);
 							return;
 					}
 					
@@ -323,34 +314,32 @@ public class Router extends Device
 			} else {}
 		} else {}
 
-		/* CHECK 2 : Checksum Validation */
+		// Verify checksum
 		short actualCheckSum = pkt.getChecksum();
 		pkt.resetChecksum();
 		pkt.serialize();
 		short currentChecksum = pkt.getChecksum();
 		if(actualCheckSum != currentChecksum) {
-			/* Checksum mismatch - Dropping */
 			return;
 		}
 
-		/* CHECK 3 : TTL Validation */
+		// Check TTL
 		byte currentTTL = pkt.getTtl();
 		currentTTL--;
 		if(currentTTL == 0) {
-			/* TTL 0 - ICMP TLE message to sender */
+			System.out.println("time out");
 			this.sendICMPPacket(pkt, inIface, (byte)11, (byte)0, false);
 			return;
 		}
 
-		/* Updating Packet : New TTL & Checksum */
+		// Reset checksum now that TTL is decremented
 		pkt.setTtl(currentTTL);
 		pkt.resetChecksum();
 		pkt.serialize();
 
-		/* CHECK 4 : Is packet destined for router interface IP Address */
+		// Check if packet is destined for one of router's interfaces
 		for(Map.Entry<String, Iface> entry: interfaces.entrySet()){
 			if(pkt.getDestinationAddress() == entry.getValue().getIpAddress()){
-				/* Packet Destined for Routers IP - Dropping */
 				byte protocolType = pkt.getProtocol();
 				if(protocolType == IPv4.PROTOCOL_TCP || protocolType == IPv4.PROTOCOL_UDP){
 					this.sendICMPPacket(pkt, inIface, (byte)3, (byte)3, false);
@@ -365,43 +354,92 @@ public class Router extends Device
 			}
 		}
 
-		RouteEntry rEntry = routeTable.lookup(pkt.getDestinationAddress());
-		if(rEntry == null) {
-			System.out.println("Destination Net Unreachable");
-			this.sendICMPPacket(pkt, inIface, (byte)3, (byte)0, false);
-			return;
-		}
+		// RouteEntry rEntry = routeTable.lookup(pkt.getDestinationAddress());
+		// if(rEntry == null) {
+		// 	System.out.println("Destination Net Unreachable");
+		// 	this.sendICMPPacket(pkt, inIface, (byte)3, (byte)0, false);
+		// 	return;
+		// }
 
-		/* CHECK 5 : Check if incoming and outgoing interfaces are same */
-		if(inIface.getName().equals(rEntry.getInterface().getName())){
-			return;
-		}
+		// /* CHECK 5 : Check if incoming and outgoing interfaces are same */
+		// if(inIface.getName().equals(rEntry.getInterface().getName())){
+		// 	return;
+		// }
 
-		MACAddress sourceMac = rEntry.getInterface().getMacAddress();
-		etherPacket.setSourceMACAddress(sourceMac.toString());
+		// MACAddress sourceMac = rEntry.getInterface().getMacAddress();
+		// etherPacket.setSourceMACAddress(sourceMac.toString());
 
-		int nextHopIPAddress = rEntry.getGatewayAddress();
-		if(nextHopIPAddress == 0){
-			nextHopIPAddress = pkt.getDestinationAddress();
-		}
+		// int nextHopIPAddress = rEntry.getGatewayAddress();
+		// if(nextHopIPAddress == 0){
+		// 	nextHopIPAddress = pkt.getDestinationAddress();
+		// }
 
-		/* CHECK 6 : Checking non-existent Host in any network connected to Router */
-		ArpEntry ae = arpCache.lookup(nextHopIPAddress);
-		if(ae == null) {
-			this.arpupdate(etherPacket, inIface, rEntry.getInterface(), nextHopIPAddress);
-			//this.sendICMPPacket(pkt, inIface, (byte)3, (byte)1);
-			return;
-		}
+		// /* CHECK 6 : Checking non-existent Host in any network connected to Router */
+		// ArpEntry ae = arpCache.lookup(nextHopIPAddress);
+		// if(ae == null) {
+		// 	this.arpupdate(etherPacket, inIface, rEntry.getInterface(), nextHopIPAddress);
+		// 	//this.sendICMPPacket(pkt, inIface, (byte)3, (byte)1);
+		// 	return;
+		// }
 
-		MACAddress destinationMac = ae.getMac();
-		etherPacket.setDestinationMACAddress(destinationMac.toString());
+		// MACAddress destinationMac = ae.getMac();
+		// etherPacket.setDestinationMACAddress(destinationMac.toString());
 		
-		sendPacket(etherPacket, rEntry.getInterface());
-
-		/********************************************************************/
+		// sendPacket(etherPacket, rEntry.getInterface());
+		this.forwardIpPacket(etherPacket, inIface);
 	}}
 
-	/* Construct ICMP packet with given type and command values and send it */
+	private void forwardIpPacket(Ethernet etherPacket, Iface inIface)
+	{
+		// Make sure it's an IP packet
+		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4)
+		{ return; }
+		System.out.println("Forward IP packet");
+
+		// Get IP header
+		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
+		int dstAddr = ipPacket.getDestinationAddress();
+
+		// Find matching route table entry 
+		// RouteEntry bestMatch = this.routeTable.lookup(dstAddr);
+		RouteEntry bestMatch = routeTable.lookup(dstAddr);
+		if(bestMatch == null) {
+			System.out.println("Destination Net Unreachable");
+			this.sendICMPPacket(ipPacket, inIface, (byte)3, (byte)0, false);
+			return;
+		}
+
+		// // If no entry matched, do nothing
+		// if (null == bestMatch)
+		// { return; }
+
+		// Make sure we don't sent a packet back out the interface it came in
+		Iface outIface = bestMatch.getInterface();
+		// if (outIface == inIface)
+		// { return; }
+		if(inIface.getName().equals(bestMatch.getInterface().getName())){
+				return;
+			}
+
+		// Set source MAC address in Ethernet header
+		etherPacket.setSourceMACAddress(outIface.getMacAddress().toBytes());
+
+		// If no gateway, then nextHop is IP destination
+		int nextHop = bestMatch.getGatewayAddress();
+		if (0 == nextHop)
+		{ nextHop = dstAddr; }
+
+		// Set destination MAC address in Ethernet header
+		ArpEntry arpEntry = this.arpCache.lookup(nextHop);
+		if (null == arpEntry)
+		{ 
+			this.arpupdate(etherPacket, inIface, bestMatch.getInterface(), nextHop);
+			return; }
+		etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
+
+		this.sendPacket(etherPacket, outIface);
+	}
+
 	public void sendICMPPacket(IPv4 pkt, Iface inIface, byte type, byte code, boolean echo) {
 		Ethernet ether = new Ethernet();
 		IPv4 ip = new IPv4();
