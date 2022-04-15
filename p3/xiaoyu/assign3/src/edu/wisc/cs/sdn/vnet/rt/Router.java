@@ -495,18 +495,28 @@ public class Router extends Device
 		/* Ethernet header construction */
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
-		MACAddress destMAC = findMACFromRTLookUp(pktIn.getSourceAddress());
-		if(destMAC == null) {
-			RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
-			/* Find the next hop IP Address */
-			int nextHopIPAddress = rEntry.getGatewayAddress();
-			if(nextHopIPAddress == 0){
-				nextHopIPAddress = pktIn.getSourceAddress();
-			}
-			this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
-			return;
+		// MACAddress destMAC = findMACFromRTLookUp(pktIn.getSourceAddress());
+		// if(destMAC == null) {
+		// 	RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
+		// 	/* Find the next hop IP Address */
+		// 	int nextHopIPAddress = rEntry.getGatewayAddress();
+		// 	if(nextHopIPAddress == 0){
+		// 		nextHopIPAddress = pktIn.getSourceAddress();
+		// 	}
+		// 	this.sendARPRequest(ether, inIface, rEntry.getInterface(), nextHopIPAddress);
+		// 	return;
+		// }
+		RouteEntry rEntry = routeTable.lookup(pktIn.getSourceAddress());
+		// Find the next hop IP Address
+		int nextHopIPAddress = rEntry.getGatewayAddress();
+		if(nextHopIPAddress == 0){
+			nextHopIPAddress = pktIn.getSourceAddress();
 		}
-		ether.setDestinationMACAddress(destMAC.toString());
+		ArpEntry arpEntry = this.arpCache.lookup(nextHopIPAddress);
+        if (null == arpEntry)
+        { return; }
+        ether.setDestinationMACAddress(arpEntry.getMac().toBytes());
+		// ether.setDestinationMACAddress(destMAC.toString());
 		System.out.println("icmp combined");
 
 		/* Send ICMP packet */
