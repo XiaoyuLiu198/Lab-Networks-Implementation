@@ -241,9 +241,9 @@ public class Router extends Device
 							if(dvEntry.IPAddress == ripEntry.getAddress()) {
 								dvEntry.updateTime();
 								find = true;
-								if(dvEntry.distance > (ripEntry.getMetric() + 1)) {
+								if(dvEntry.metric > (ripEntry.getMetric() + 1)) {
 									updated = true;
-									dvEntry.distance = ripEntry.getMetric() + 1;
+									dvEntry.metric = ripEntry.getMetric() + 1;
 									routeTable.update(dvEntry.IPAddress, ripEntry.getSubnetMask(), pkt.getSourceAddress(), inIface);
 								} else {
 								}
@@ -287,9 +287,9 @@ public class Router extends Device
 									if(dvEntry.IPAddress == ripEntry.getAddress()) {
 										dvEntry.updateTime();
 										match = true;
-										if(dvEntry.distance > (ripEntry.getMetric() + 1)) {
+										if(dvEntry.metric > (ripEntry.getMetric() + 1)) {
 											updated = true;
-											dvEntry.distance = ripEntry.getMetric() + 1;
+											dvEntry.metric = ripEntry.getMetric() + 1;
 											routeTable.update(dvEntry.IPAddress, ripEntry.getSubnetMask(), pkt.getSourceAddress(), inIface);
 										} else {
 										}
@@ -606,7 +606,7 @@ public class Router extends Device
 				synchronized(this.distanceVectorTable) {
 						for(DistanceVectorEntry dvEntry: this.distanceVectorTable.DVTable) {
 							RouteEntry re = this.routeTable.lookup(dvEntry.IPAddress);
-							RIPv2Entry ripEntry = new RIPv2Entry(re.getDestinationAddress(), re.getMaskAddress(), dvEntry.distance);
+							RIPv2Entry ripEntry = new RIPv2Entry(re.getDestinationAddress(), re.getMaskAddress(), dvEntry.metric);
 							ripPkt.addEntry(ripEntry);
 						}
 				}
@@ -639,7 +639,7 @@ public class Router extends Device
 				RIPv2 rip = new RIPv2();
 				for(DistanceVectorEntry dvEntry: this.distanceVectorTable.DVTable) {
 					RouteEntry re = this.routeTable.lookup(dvEntry.IPAddress);
-					RIPv2Entry ripEntry = new RIPv2Entry(re.getDestinationAddress(), re.getMaskAddress(), dvEntry.distance);
+					RIPv2Entry ripEntry = new RIPv2Entry(re.getDestinationAddress(), re.getMaskAddress(), dvEntry.metric);
 					rip.addEntry(ripEntry);
 				}
 				rip.setCommand(command);
@@ -672,7 +672,7 @@ public class Router extends Device
 		RIPv2 ripPkt = new RIPv2();
 		for(DistanceVectorEntry dvEntry: this.distanceVectorTable.DVTable) {
 			RouteEntry re = this.routeTable.lookup(dvEntry.IPAddress);
-			RIPv2Entry ripEntry = new RIPv2Entry(re.getDestinationAddress(), re.getMaskAddress(), dvEntry.distance);
+			RIPv2Entry ripEntry = new RIPv2Entry(re.getDestinationAddress(), re.getMaskAddress(), dvEntry.metric);
 			ripPkt.addEntry(ripEntry);
 		}
 		ripPkt.setCommand(command);

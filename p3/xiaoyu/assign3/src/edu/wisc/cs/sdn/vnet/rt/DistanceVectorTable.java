@@ -23,8 +23,8 @@ public class DistanceVectorTable
 		for(DistanceVectorEntry DVEntry : DVTable)
 		{
 			if(entry.IPAddress == DVEntry.IPAddress){
-				if(entry.distance < DVEntry.distance){
-					DVEntry.distance = entry.distance;
+				if(entry.metric < DVEntry.metric){
+					DVEntry.metric = entry.metric;
 					return true;
 				}
 				else{
@@ -37,13 +37,4 @@ public class DistanceVectorTable
 		return true;
 	}
 
-	public void printDVTable() {
-		System.out.println("--------------------------");
-		System.out.println("Subnet Number\tDistance");
-		System.out.println("--------------------------");
-		for(DistanceVectorEntry e : this.DVTable) {
-			System.out.println(e);
-		}
-		System.out.println("--------------------------");
-	}
 }

@@ -4,14 +4,14 @@ import net.floodlightcontroller.packet.IPv4;
 public class DistanceVectorEntry
 {
 	int IPAddress;
-	int distance;
+	int metric;
 	long time;
 	int valid;
 
 	public DistanceVectorEntry(int IPAddress, int distance, int valid)
 	{
 		this.IPAddress = IPAddress;
-		this.distance = distance;
+		this.metric = distance;
 		this.time = System.currentTimeMillis();
 		this.valid = valid;
 	}
@@ -23,8 +23,8 @@ public class DistanceVectorEntry
 	}
 
 	public String toString() {
-		IPv4 dummy = new IPv4();
-		String out = IPv4.fromIPv4Address(this.IPAddress) + "\t" + this.distance;
+		// IPv4 dummy = new IPv4();
+		String out = IPv4.fromIPv4Address(this.IPAddress) + "\t" + this.metric;
 		return out;
 	}
 }
