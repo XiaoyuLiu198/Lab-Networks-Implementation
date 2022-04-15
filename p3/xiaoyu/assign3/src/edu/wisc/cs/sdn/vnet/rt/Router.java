@@ -269,7 +269,7 @@ public class Router extends Device {
 						}
 					}
 					if (isRouterIP == true) {
-						boolean match = false
+						boolean match = false;
 						boolean updated = false;
 						RIPv2 ripPkt = (RIPv2) udp.getPayload();
 
