@@ -490,6 +490,7 @@ public class Router extends Device
 		ether.setPayload(ip);
 		ip.setPayload(icmp);
 		icmp.setPayload(data);
+		System.out.println("set payloads");
 
 		/* Ether packet constructed */
 		/* Ethernet header construction */
