@@ -172,53 +172,54 @@ public class Router extends Device
 
 		/* CHECK 1 : Ethernet Packet */
 		/* Handle ARP Request */
-		if(etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
-			ARP arpPacket = (ARP)etherPacket.getPayload();
-			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
-			if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
-				/* Send ARP Reply */
-				System.out.println("need to send arp reply");
-				// this.sendARPReply(etherPacket, arpPacket, inIface);
-				return;
-			}
-			else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
-				/* Got ARP Reply */
-				IPv4 dummyPkt = new IPv4();
-				int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
-				MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
+		// if(etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
+		// 	ARP arpPacket = (ARP)etherPacket.getPayload();
+		// 	int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
+		// 	if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
+		// 		/* Send ARP Reply */
+		// 		System.out.println("need to send arp reply");
+		// 		// this.sendARPReply(etherPacket, arpPacket, inIface);
+		// 		return;
+		// 	}
+		// 	else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
+		// 		/* Got ARP Reply */
+		// 		IPv4 dummyPkt = new IPv4();
+		// 		int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
+		// 		MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
 
-				/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
-				synchronized(arpReqTable) {
-				for(ARPREntry ARE : arpReqTable.ARPRequestTab) {
-					if(ARE.IPAddress == arpReplyIPAddress) {
-						ARE.nTry = -1;
-						ARE.destinationMAC = destinationMAC;
-						// ARE.disable(destinationMAC);
-						// public void disable(MACAddress destinationMAC) {
-						// 	synchronized(this) {
-						// 		this.nTry = -1;
-						// 		this.destinationMAC = destinationMAC;
-						// 	}
-						// }
-						break;
-					}
-				}
-				}
+		// 		/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
+		// 		synchronized(arpReqTable) {
+		// 		for(ARPREntry ARE : arpReqTable.ARPRequestTab) {
+		// 			if(ARE.IPAddress == arpReplyIPAddress) {
+		// 				ARE.nTry = -1;
+		// 				ARE.destinationMAC = destinationMAC;
+		// 				// ARE.disable(destinationMAC);
+		// 				// public void disable(MACAddress destinationMAC) {
+		// 				// 	synchronized(this) {
+		// 				// 		this.nTry = -1;
+		// 				// 		this.destinationMAC = destinationMAC;
+		// 				// 	}
+		// 				// }
+		// 				break;
+		// 			}
+		// 		}
+		// 		}
 
-				/* Add MAC Address to ARP Cache */
-				arpCache.insert(destinationMAC, arpReplyIPAddress);
-				return;
-			}
-			else
-			{
-				/* Drop Pakcet */
-				return;
-			}
-		}
-		else if(etherPacket.getEtherType() != 0x800) {
-			/* Not IP Packet - Dropping */
-			return;
-		}
+		// 		/* Add MAC Address to ARP Cache */
+		// 		arpCache.insert(destinationMAC, arpReplyIPAddress);
+		// 		return;
+		// 	}
+		// 	else
+		// 	{
+		// 		/* Drop Pakcet */
+		// 		return;
+		// 	}
+		// }
+		// else if(etherPacket.getEtherType() != 0x800) {
+		// 	/* Not IP Packet - Dropping */
+		// 	return;
+		// }
+		if(etherPacket.getEtherType() == Ethernet.TYPE_IPv4){
 		IPv4 pkt = (IPv4)etherPacket.getPayload();
 
 		int expectedRIPMulticastAddress = pkt.toIPv4Address("224.0.0.9");
@@ -416,7 +417,7 @@ public class Router extends Device
 		sendPacket(etherPacket, rEntry.getInterface());
 
 		/********************************************************************/
-	}
+	}}
 
 	/* Construct ICMP packet with given type and command values and send it */
 	public void sendICMPPacket(IPv4 pktIn, Iface inIface, byte type, byte code) {
