@@ -208,12 +208,10 @@ public class Router extends Device
 			}
 			else
 			{
-				/* Drop Pakcet */
 				return;
 			}
 		}
 		else if(etherPacket.getEtherType() != 0x800) {
-			/* Not IP Packet - Dropping */
 			return;
 		}
 		this.handleIpPacket(etherPacket, inIface);
@@ -256,7 +254,7 @@ public class Router extends Device
 							updated = true;
 							DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(), ripEntry.getMetric()+1, 1);
 							distanceVectorTable.addDVTableEntry(newDVEntry);
-							DVEntryTOThreadImpl TOThreadObj = new DVEntryTOThreadImpl(newDVEntry);
+							DVEntryto TOThreadObj = new DVEntryto(newDVEntry);
 							Thread TOThread = new Thread(TOThreadObj);
 							TOThread.start();
 							routeTable.insert(ripEntry.getAddress(), pkt.getSourceAddress(), ripEntry.getSubnetMask(), inIface);
@@ -301,7 +299,7 @@ public class Router extends Device
 									updated = true;
 									DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(), ripEntry.getMetric()+1, 1);
 									distanceVectorTable.addDVTableEntry(newDVEntry);
-									DVEntryTOThreadImpl TOThreadObj = new DVEntryTOThreadImpl(newDVEntry);
+									DVEntryto TOThreadObj = new DVEntryto(newDVEntry);
 									Thread TOThread = new Thread(TOThreadObj);
 									TOThread.start();
 									routeTable.insert(ripEntry.getAddress(), pkt.getSourceAddress(), ripEntry.getSubnetMask(), inIface);
@@ -666,39 +664,39 @@ public class Router extends Device
 				ether.setDestinationMACAddress(sourceMACAddress.toString());
 		
 				sendPacket(ether, inIface);
+				break;
 			}
-			
 		}
 
-		public void sendRIPPacketUni(byte command, int sourceIPAddress, MACAddress sourceMACAddress, Iface inIface) {
-			RIPv2 ripPkt = new RIPv2();
-			for(DistanceVectorEntry dvEntry: this.distanceVectorTable.DVTable) {
-				RouteEntry re = this.routeTable.lookup(dvEntry.IPAddress);
-				RIPv2Entry ripEntry = new RIPv2Entry(re.getDestinationAddress(), re.getMaskAddress(), dvEntry.distance);
-				ripPkt.addEntry(ripEntry);
-			}
-			ripPkt.setCommand(command);
+	public void sendRIPPacketUni(byte command, int sourceIPAddress, MACAddress sourceMACAddress, Iface inIface) {
+		RIPv2 ripPkt = new RIPv2();
+		for(DistanceVectorEntry dvEntry: this.distanceVectorTable.DVTable) {
+			RouteEntry re = this.routeTable.lookup(dvEntry.IPAddress);
+			RIPv2Entry ripEntry = new RIPv2Entry(re.getDestinationAddress(), re.getMaskAddress(), dvEntry.distance);
+			ripPkt.addEntry(ripEntry);
+		}
+		ripPkt.setCommand(command);
 
-			UDP udpPkt = new UDP();
-			udpPkt.setSourcePort(UDP.RIP_PORT);
-			udpPkt.setDestinationPort(UDP.RIP_PORT);
-			udpPkt.setPayload(ripPkt);
+		UDP udpPkt = new UDP();
+		udpPkt.setSourcePort(UDP.RIP_PORT);
+		udpPkt.setDestinationPort(UDP.RIP_PORT);
+		udpPkt.setPayload(ripPkt);
 
-			IPv4 ipPkt = new IPv4();
-			ipPkt.setProtocol(IPv4.PROTOCOL_UDP);
-			ipPkt.setTtl((byte)64);
-			ipPkt.setDestinationAddress(sourceIPAddress);
-			ipPkt.setSourceAddress(inIface.getIpAddress());
-			ipPkt.setPayload(udpPkt);
+		IPv4 ipPkt = new IPv4();
+		ipPkt.setProtocol(IPv4.PROTOCOL_UDP);
+		ipPkt.setTtl((byte)64);
+		ipPkt.setDestinationAddress(sourceIPAddress);
+		ipPkt.setSourceAddress(inIface.getIpAddress());
+		ipPkt.setPayload(udpPkt);
 
-			Ethernet ether = new Ethernet();
-			ether.setEtherType(Ethernet.TYPE_IPv4);
-			ether.setPayload(ipPkt);
-			ether.setSourceMACAddress(inIface.getMacAddress().toString());
-			ether.setDestinationMACAddress(sourceMACAddress.toString());
+		Ethernet ether = new Ethernet();
+		ether.setEtherType(Ethernet.TYPE_IPv4);
+		ether.setPayload(ipPkt);
+		ether.setSourceMACAddress(inIface.getMacAddress().toString());
+		ether.setDestinationMACAddress(sourceMACAddress.toString());
 
-			sendPacket(ether, inIface);
-	}
+		sendPacket(ether, inIface);
+}
 
 	// arp entry renew
 	class Entryto implements Runnable {
@@ -847,10 +845,10 @@ public class Router extends Device
 		}
 	}
 
-	class DVEntryTOThreadImpl implements Runnable {
+	class DVEntryto implements Runnable {
 		DistanceVectorEntry entry;
 
-		public DVEntryTOThreadImpl(DistanceVectorEntry entry) {
+		public DVEntryto(DistanceVectorEntry entry) {
 			this.entry = entry;
 		}
 
