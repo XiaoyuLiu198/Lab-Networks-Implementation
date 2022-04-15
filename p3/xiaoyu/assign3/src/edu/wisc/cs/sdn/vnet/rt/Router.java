@@ -246,6 +246,7 @@ public class Router extends Device
 		// 		/* Not IP Packet - Dropping */
 		// 		return;
 		// }
+		if(etherPacket.getEtherType() == Ethernet.TYPE_IPv4){
 		System.out.println("get ip packet");
 		IPv4 pkt = (IPv4)etherPacket.getPayload();
 
@@ -441,7 +442,7 @@ public class Router extends Device
 		etherPacket.setDestinationMACAddress(destinationMac.toString());
 		
 		/* Send Packet on the interface found from Route Table */
-		sendPacket(etherPacket, rEntry.getInterface());
+		sendPacket(etherPacket, rEntry.getInterface());}
 
 		/********************************************************************/
 	}
