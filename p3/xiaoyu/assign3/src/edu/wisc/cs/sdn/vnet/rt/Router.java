@@ -26,11 +26,10 @@ public class Router extends Device
 	
 	/** ARP cache for the router */
 	private ArpCache arpCache;
-
-	/** ARP Request Table */
-	private ARPRequestTable arpReqTable;
+	// ARP table
+	private ARPRTable arpReqTable;
 	
-	/** Distance Vector Table */
+	// Distance Vector Table
 	private DistanceVectorTable distanceVectorTable;
 
 	/**
@@ -42,7 +41,7 @@ public class Router extends Device
 		super(host,logfile);
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
-		this.arpReqTable = new ARPRequestTable();
+		this.arpReqTable = new ARPRTable();
 		TableThreadImpl obj = new TableThreadImpl(this.arpReqTable);
 		Thread t = new Thread(obj);
 		t.start();
@@ -55,11 +54,11 @@ public class Router extends Device
 	public RouteTable getRouteTable()
 	{ return this.routeTable; }
 
-	class EthernetPktInfo {
+	class etherwrap {
 		Ethernet pkt;
 		Iface inIface;
 	
-		public EthernetPktInfo(Ethernet pkt, Iface inIface) {
+		public etherwrap(Ethernet pkt, Iface inIface) {
 			this.pkt = pkt;
 			this.inIface = inIface;
 		}
@@ -67,21 +66,16 @@ public class Router extends Device
 	
 	public class ARPREntry {
 		int IPAddress;
-		Queue<EthernetPktInfo> etherPktQ;
+		Queue<etherwrap> etherPktl;
 		Iface outIface;
-	
-		/* Initial Value : 3
-		 * When ARP request send : value--
-		 * When ARP reply recieved : -1
-		*/
 		int nTry;
 		MACAddress destinationMAC;
 	
 		public ARPREntry(int IP, Ethernet pkt, Iface outIface, Iface inIface) {
+			this.etherPktl = new LinkedList<etherwrap>();
+			etherwrap infoNode = new etherwrap(pkt, inIface);
 			this.IPAddress = IP;
-			this.etherPktQ = new LinkedList<EthernetPktInfo>();
-			EthernetPktInfo infoNode = new EthernetPktInfo(pkt, inIface);
-			this.etherPktQ.add(infoNode);
+			this.etherPktl.add(infoNode);
 			this.outIface = outIface;
 			this.nTry = 3;
 			this.destinationMAC = null;
@@ -89,17 +83,21 @@ public class Router extends Device
 	
 		public void addPacketQueue(Ethernet pkt, Iface outIface, Iface inIface) {
 			synchronized(this) {
-				EthernetPktInfo infoNode = new EthernetPktInfo(pkt, inIface);
-				this.etherPktQ.add(infoNode);
-				Iterator<EthernetPktInfo> itr = etherPktQ.iterator();
-				while (itr.hasNext()) {
-					EthernetPktInfo e = itr.next();
-					IPv4 pkt1 = (IPv4)e.pkt.getPayload();
-				}
+				etherwrap infoNode = new etherwrap(pkt, inIface);
+				this.etherPktl.add(infoNode);
+				// for(etherwrap e: etherPktl){
+				// 	// etherwrap e = etherPktl.get(i);
+				// 	IPv4 pkt1 = (IPv4)e.pkt.getPayload();
+				// }
+				// Iterator<etherwrap> itr = etherPktl.iterator();
+				// while (itr.hasNext()) {
+				// 	etherwrap e = itr.next();
+				// 	IPv4 pkt_now = (IPv4)e.pkt.getPayload();
+				// }
 			}
 		}
 	
-		public void invalidateARPRequestEntry(MACAddress destinationMAC) {
+		public void disable(MACAddress destinationMAC) {
 			synchronized(this) {
 				this.nTry = -1;
 				this.destinationMAC = destinationMAC;
@@ -107,10 +105,10 @@ public class Router extends Device
 		}
 	}
 
-	public class ARPRequestTable {
+	public class ARPRTable {
 		ArrayList<ARPREntry> ARPRequestTab;
 	
-		public ARPRequestTable() {
+		public ARPRTable() {
 			ARPRequestTab = new ArrayList<ARPREntry>();
 		}
 	
@@ -215,7 +213,7 @@ public class Router extends Device
 				synchronized(arpReqTable) {
 				for(ARPREntry ARE : arpReqTable.ARPRequestTab) {
 					if(ARE.IPAddress == arpReplyIPAddress) {
-						ARE.invalidateARPRequestEntry(destinationMAC);
+						ARE.disable(destinationMAC);
 						break;
 					}
 				}
@@ -611,7 +609,7 @@ public class Router extends Device
 		t.start();
 	}
 
-	public void sendARPRequestPacket(int IPAddress, Iface outIface, EthernetPktInfo p1) {
+	public void sendARPRequestPacket(int IPAddress, Iface outIface, etherwrap p1) {
 		Ethernet ether = new Ethernet();
 		ARP arpPkt = new ARP();
 
@@ -721,7 +719,7 @@ public class Router extends Device
 					break;
 
 				synchronized(this.entry) {
-					sendARPRequestPacket(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktQ.peek());
+					sendARPRequestPacket(this.entry.IPAddress, this.entry.outIface, this.entry.etherPktl.peek());
 				}
 				try {
 					Thread.sleep(1000);
@@ -736,9 +734,9 @@ public class Router extends Device
 	}
 
 	class TableThreadImpl implements Runnable {
-		ARPRequestTable table;
+		ARPRTable table;
 
-		public TableThreadImpl(ARPRequestTable table) {
+		public TableThreadImpl(ARPRTable table) {
 			this.table = table;
 		}
 
@@ -761,8 +759,8 @@ public class Router extends Device
 						/* -> Send ICMP - Destination host not rechable packet for every
 						/* 	queued Ethernet Packet in the Incoming interface */
 						if(entry.nTry == 0) {
-							while(!entry.etherPktQ.isEmpty()) {
-								EthernetPktInfo infoNode = entry.etherPktQ.poll();
+							while(!entry.etherPktl.isEmpty()) {
+								etherwrap infoNode = entry.etherPktl.poll();
 								IPv4 myPkt = (IPv4)infoNode.pkt.getPayload();
 								sendICMPPacket(myPkt, infoNode.inIface, (byte)3, (byte)1);
 							}
@@ -771,8 +769,8 @@ public class Router extends Device
 						/* Condition 2 : ARP reply received for the IP */
 						/* -> Forward the packet for the MAC address updated in the entry */
 						else if(entry.nTry == -1) {
-							while(!entry.etherPktQ.isEmpty()) {
-								EthernetPktInfo infoNode = entry.etherPktQ.poll();
+							while(!entry.etherPktl.isEmpty()) {
+								etherwrap infoNode = entry.etherPktl.poll();
 								Ethernet ether = infoNode.pkt;
 								ether.setDestinationMACAddress(entry.destinationMAC.toString());
 								sendPacket(ether, entry.outIface);
