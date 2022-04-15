@@ -201,13 +201,13 @@ public class Router extends Device
 		/* Handle ARP Request */
 		if(etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
 			System.out.println("arp request sent");
-			// ARP arpPacket = (ARP)etherPacket.getPayload();
-			// int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
-			// if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
-			// 	/* Send ARP Reply */
-			// 	this.sendARPReply(etherPacket, arpPacket, inIface);
-			// 	return;
-			// }
+			ARP arpPacket = (ARP)etherPacket.getPayload();
+			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
+			if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
+				/* Send ARP Reply */
+				this.sendARPReply(etherPacket, arpPacket, inIface);
+				return;
+			}
 			// else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
 			// 	/* Got ARP Reply */
 			// 	IPv4 dummyPkt = new IPv4();
@@ -502,6 +502,7 @@ public class Router extends Device
 			return;
 		}
 		ether.setDestinationMACAddress(destMAC.toString());
+		System.out.println("icmp combined");
 
 		/* Send ICMP packet */
 		sendPacket(ether, inIface);
@@ -665,7 +666,8 @@ public class Router extends Device
 				/* IP Packet */
 				IPv4 ipPkt = new IPv4();
 				ipPkt.setProtocol(IPv4.PROTOCOL_UDP);
-				ipPkt.setTtl((byte)15);
+				// ipPkt.setTtl((byte)15);
+				ipPkt.setTtl((byte)64);
 				ipPkt.setDestinationAddress("224.0.0.9");
 				ipPkt.setSourceAddress(entry.getValue().getIpAddress());
 				ipPkt.setPayload(udpPkt);
