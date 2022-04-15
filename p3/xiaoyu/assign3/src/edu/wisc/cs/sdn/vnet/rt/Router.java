@@ -206,9 +206,9 @@ public class Router extends Device
 			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
 			if(arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
 				/* Send ARP Reply */
-				System.out.println("arp request sent");
+				// System.out.println("arp request sent");
 				// this.sendICMPPacket(ipv4Packet, inIface, (byte)11, (byte)0);
-				this.sendARPReply(etherPacket, arpPacket, inIface);
+				// this.sendARPReply(etherPacket, arpPacket, inIface);
 				return;
 			}
 			else if(arpPacket.getOpCode() == ARP.OP_REPLY) {
@@ -217,15 +217,15 @@ public class Router extends Device
 				int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
 				MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
 
-				/* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
-				synchronized(arpReqTable) {
-				for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
-					if(ARE.IPAddress == arpReplyIPAddress) {
-						ARE.invalidateARPRequestEntry(destinationMAC);
-						break;
-					}
-				}
-				}
+				// /* Ivalidate Entry in ARP Request Table : Get Sender protocol address from ARP header */
+				// synchronized(arpReqTable) {
+				// for(ARPRequestEntry ARE : arpReqTable.ARPRequestTab) {
+				// 	if(ARE.IPAddress == arpReplyIPAddress) {
+				// 		ARE.invalidateARPRequestEntry(destinationMAC);
+				// 		break;
+				// 	}
+				// }
+				// }
 
 				/* Add MAC Address to ARP Cache */
 				arpCache.insert(destinationMAC, arpReplyIPAddress);
