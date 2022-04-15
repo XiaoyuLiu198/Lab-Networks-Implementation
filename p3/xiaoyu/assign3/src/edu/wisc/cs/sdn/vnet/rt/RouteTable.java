@@ -35,38 +35,8 @@ public class RouteTable
 	 */
 	public RouteEntry lookup(int ip)
 	{
-		//System.out.println(this.toString());
 		synchronized(this.entries)
 		{
-			/*****************************************************************/
-			/* Find the route entry with the longest prefix match      	*/
-			/* Step 1: Convert ip in int to Binary String 			*/
-			/* Step 2: Iterate through every RouteTable Entry 		*/
-			/* 	For each entry 						*/
-			/*	   -> Convert destIPAddrr in int to Binary String 	*/
-			/*	   -> Get the matching Prefix of destIPAddr & ip	*/
-			/* 	   -> If the current matching prefix if greater the LCP	*/
-			/*	   -> Save the Route Entry & update LCP			*/
-			/* Step 3: Return the Route Entry				*/
-			/* Return value could be null if there is no match		*/
-
-			/*
-			String myIP = formatIPAddressToBinaryString(ip);
-			int longestMatch = 0;
-			RouteEntry outputRE = null;
-			*/
-			/* For each entry in Route Table, if there is a matching LCP IP address */
-			/*
-			for(RouteEntry r : entries) {
-				String entryIP = formatIPAddressToBinaryString(r.getDestinationAddress());
-				int matchingLength = commonPrefixLength(myIP, entryIP);
-				if(matchingLength > longestMatch) {
-					longestMatch = matchingLength;
-					outputRE = r;
-				}
-			}
-			return outputRE;
-			*/
 			RouteEntry bestMatch = null;
 			for (RouteEntry entry : this.entries)
 			{
@@ -82,8 +52,6 @@ public class RouteTable
 			}
 
 			return bestMatch;
-
-			/*****************************************************************/
 		}
 	}
 

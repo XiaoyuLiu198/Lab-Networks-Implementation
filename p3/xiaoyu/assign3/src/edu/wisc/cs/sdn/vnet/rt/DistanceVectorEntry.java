@@ -15,16 +15,4 @@ public class DistanceVectorEntry
 		this.time = System.currentTimeMillis();
 		this.valid = valid;
 	}
-
-	// public void updateTime() {
-	// 	synchronized(this) {
-	// 		this.time = System.currentTimeMillis();
-	// 	}
-	// }
-
-	// public String toString() {
-	// 	// IPv4 dummy = new IPv4();
-	// 	String out = IPv4.fromIPv4Address(this.IPAddress) + "\t" + this.metric;
-	// 	return out;
-	// }
 }
