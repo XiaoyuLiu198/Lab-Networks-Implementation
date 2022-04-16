@@ -203,7 +203,7 @@ public class Router extends Device
 		}
 		ether.setDestinationMACAddress(destmac.toString());
 
-		this.sendPacket(ether, bestMatch.getInterface());
+		this.sendPacket(ether, bestmatch.getInterface());
 	}
 
 	private void echoReply(Ethernet etherPacket, Iface inIface){
