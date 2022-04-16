@@ -103,20 +103,20 @@ public class Router extends Device
 		switch(etherPacket.getEtherType())
 		{
 		case Ethernet.TYPE_IPv4:
-			IPv4 ip = (IPv4)etherPacket.getPayload();
-			if (IPv4.toIPv4Address("224.0.0.9") == ip.getDestinationAddress())
-			{
-				if (IPv4.PROTOCOL_UDP == ip.getProtocol()) 
-				{
-					UDP udp = (UDP)ip.getPayload();
-					if (UDP.RIP_PORT == udp.getDestinationPort())
-					{ 
-						RIPv2 rip = (RIPv2)udp.getPayload();
-						this.handleRipPacket(rip.getCommand(), etherPacket, inIface);
-						break;
-					}
-				}
-			}
+			// IPv4 ip = (IPv4)etherPacket.getPayload();
+			// if (IPv4.toIPv4Address("224.0.0.9") == ip.getDestinationAddress())
+			// {
+			// 	if (IPv4.PROTOCOL_UDP == ip.getProtocol()) 
+			// 	{
+			// 		UDP udp = (UDP)ip.getPayload();
+			// 		if (UDP.RIP_PORT == udp.getDestinationPort())
+			// 		{ 
+			// 			RIPv2 rip = (RIPv2)udp.getPayload();
+			// 			this.handleRipPacket(rip.getCommand(), etherPacket, inIface);
+			// 			break;
+			// 		}
+			// 	}
+			// }
 
 			this.handleIpPacket(etherPacket, inIface);
 			break;
@@ -278,14 +278,21 @@ public class Router extends Device
 	private HashMap<Integer, RipEntry> ripDict;
 
 	public void rip(){
-		for (Iface iface : this.interfaces.values())
-		{
-			int mask = iface.getSubnetMask();
-			int addr = mask & iface.getIpAddress();
-			ripDict.put(addr, new RipEntry(addr, mask, 0, -1));
-			this.routeTable.insert(iface.getIpAddress(), mask, 0, iface);
-			sendRip(rip_request, null, iface);
+		// for (Iface iface : this.interfaces.values())
+		// {
+		// 	int mask = iface.getSubnetMask();
+		// 	int addr = iface.getIpAddress() & mask;
+		// 	ripDict.put(addr, new RipEntry(addr, mask, 0, -1));
+		// 	this.routeTable.insert(addr, iface, mask, iface);
+		// 	sendRip(rip_request, null, iface);
+		// }
+		for(Map.Entry<String, Iface> entry: this.getInterfaces().entrySet()){
+			int subnet = entry.getValue().getIpAddress() & entry.getValue().getSubnetMask();
+			this.routeTable.insert(subnet, 0, entry.getValue().getSubnetMask(), entry.getValue());
+			DistanceVectorEntry e = new DistanceVectorEntry(subnet, 1, -1);
+			this.ripDict.put(addr, e);
 		}
+
 
 		// send unsolicited RIP response every 10 seconds
 		TimerTask unsol = new TimerTask()
