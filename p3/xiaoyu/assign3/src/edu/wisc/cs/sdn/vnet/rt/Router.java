@@ -127,6 +127,10 @@ public class Router extends Device
 	}
 
 	private void ICMPMessage(Ethernet etherPacket, Iface inIface, byte type, byte code, boolean echo){
+		// Make sure it's an IP packet
+		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4)
+		{ return; }
+
 		IPv4 pkt = (IPv4) etherPacket.getPayload();
 		Ethernet ether = new Ethernet();
 		IPv4 ip = new IPv4();
