@@ -168,37 +168,45 @@ public class Router extends Device {
 		System.out.println("*** -> Received packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
 
-		// Handle ARP Request
-		if (etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
-			ARP arpPacket = (ARP) etherPacket.getPayload();
-			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
-			if (arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
-				// Send ARP Reply
-				System.out.println("need to send arp reply");
-				return;
-			} else if (arpPacket.getOpCode() == ARP.OP_REPLY) {
-				// Got ARP Reply
-				IPv4 dummyPkt = new IPv4();
-				int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
-				MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
-				synchronized (arpTable) {
-					for (ARPREntry ARE : arpTable.ARPs) {
-						if (ARE.IPAddress == arpReplyIPAddress) {
-							ARE.nTry = -1;
-							ARE.destinationMAC = destinationMAC;
-							break;
-						}
-					}
-				}
-				arpCache.insert(destinationMAC, arpReplyIPAddress);
-				return;
-			} else {
-				return;
-			}
-		} else if (etherPacket.getEtherType() != 0x800) {
-			return;
+		// // Handle ARP Request
+		// if (etherPacket.getEtherType() == Ethernet.TYPE_ARP) {
+		// 	ARP arpPacket = (ARP) etherPacket.getPayload();
+		// 	int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
+		// 	if (arpPacket.getOpCode() == ARP.OP_REQUEST && targetIp == inIface.getIpAddress()) {
+		// 		// Send ARP Reply
+		// 		System.out.println("need to send arp reply");
+		// 		return;
+		// 	} else if (arpPacket.getOpCode() == ARP.OP_REPLY) {
+		// 		// Got ARP Reply
+		// 		IPv4 dummyPkt = new IPv4();
+		// 		int arpReplyIPAddress = dummyPkt.toIPv4Address(arpPacket.getSenderProtocolAddress());
+		// 		MACAddress destinationMAC = new MACAddress(arpPacket.getSenderHardwareAddress());
+		// 		synchronized (arpTable) {
+		// 			for (ARPREntry ARE : arpTable.ARPs) {
+		// 				if (ARE.IPAddress == arpReplyIPAddress) {
+		// 					ARE.nTry = -1;
+		// 					ARE.destinationMAC = destinationMAC;
+		// 					break;
+		// 				}
+		// 			}
+		// 		}
+		// 		arpCache.insert(destinationMAC, arpReplyIPAddress);
+		// 		return;
+		// 	} else {
+		// 		return;
+		// 	}
+		// } else if (etherPacket.getEtherType() != 0x800) {
+		// 	return;
+		// }
+
+		// this.handleIpPacket(etherPacket, inIface);
+		switch(etherPacket.getEtherType())
+		{
+		case Ethernet.TYPE_IPv4:
+			this.handleIpPacket(etherPacket, inIface);
+			break;
+		// Ignore all other packet types, for now
 		}
-		this.handleIpPacket(etherPacket, inIface);
 	}
 
 	public void handleIpPacket(Ethernet etherPacket, Iface inIface){
@@ -548,7 +556,7 @@ public class Router extends Device {
 				for (Map.Entry<String, Iface> entry : this.getInterfaces().entrySet()) {
 					IPv4 ipPkt = new IPv4();
 					ipPkt.setProtocol(IPv4.PROTOCOL_UDP);
-					ipPkt.setTtl((byte) 15);
+					ipPkt.setTtl((byte) 64);
 					ipPkt.setDestinationAddress("224.0.0.9");
 					ipPkt.setSourceAddress(entry.getValue().getIpAddress());
 					ipPkt.setPayload(udp);
