@@ -277,62 +277,62 @@ public class Router extends Device
 
 	private HashMap<Integer, RipEntry> ripDict;
 
-	public void rip(){
-		// for (Iface iface : this.interfaces.values())
-		// {
-		// 	int mask = iface.getSubnetMask();
-		// 	int addr = iface.getIpAddress() & mask;
-		// 	ripDict.put(addr, new RipEntry(addr, mask, 0, -1));
-		// 	this.routeTable.insert(addr, iface, mask, iface);
-		// 	sendRip(rip_request, null, iface);
-		// }
-		for(Map.Entry<String, Iface> entry: this.getInterfaces().entrySet()){
-			int subnet = entry.getValue().getIpAddress() & entry.getValue().getSubnetMask();
-			this.routeTable.insert(subnet, 0, entry.getValue().getSubnetMask(), entry.getValue());
-			DistanceVectorEntry e = new DistanceVectorEntry(subnet, 1, -1);
-			this.ripDict.put(addr, e);
-		}
+	// public void rip(){
+	// 	// for (Iface iface : this.interfaces.values())
+	// 	// {
+	// 	// 	int mask = iface.getSubnetMask();
+	// 	// 	int addr = iface.getIpAddress() & mask;
+	// 	// 	ripDict.put(addr, new RipEntry(addr, mask, 0, -1));
+	// 	// 	this.routeTable.insert(addr, iface, mask, iface);
+	// 	// 	sendRip(rip_request, null, iface);
+	// 	// }
+	// 	for(Map.Entry<String, Iface> entry: this.getInterfaces().entrySet()){
+	// 		int subnet = entry.getValue().getIpAddress() & entry.getValue().getSubnetMask();
+	// 		this.routeTable.insert(subnet, 0, entry.getValue().getSubnetMask(), entry.getValue());
+	// 		DistanceVectorEntry e = new DistanceVectorEntry(subnet, 1, -1);
+	// 		this.ripDict.put(addr, e);
+	// 	}
 
 
-		// send unsolicited RIP response every 10 seconds
-		TimerTask unsol = new TimerTask()
-		{
-			public void run()
-			{
-				for (Iface iface: interfaces.values())
-				{ sendRip(rip_unsol, null, iface); }
-			}
-		};
+	// 	// send unsolicited RIP response every 10 seconds
+	// 	TimerTask unsol = new TimerTask()
+	// 	{
+	// 		public void run()
+	// 		{
+	// 			for (Iface iface: interfaces.values())
+	// 			{ sendRip(rip_unsol, null, iface); }
+	// 		}
+	// 	};
 
-		// timeout route table
-		TimerTask clean = new TimerTask()
-		{
-			public void run()
-			{
-				for (RipEntry entry : ripDict.values()) {
-					if (entry.timestamp != -1 && System.currentTimeMillis() - entry.timestamp >= 30000)
-					{	
-						ripDict.remove(entry.addr);
-						// whether directly connected with router
-						boolean move = true;
-						for (Iface inface: interfaces.values()){
-							if ((inface.getIpAddress() & inface.getSubnetMask()) == entry.addr){
-								move = false;
-							}
-						}
-						if (move == true){
-							routeTable.remove(entry.addr, entry.mask);
-						}
-					}
-				}
-			}
-		};
+	// 	// timeout route table
+	// 	TimerTask clean = new TimerTask()
+	// 	{
+	// 		public void run()
+	// 		{
+	// 			for (RipEntry entry : ripDict.values()) {
+	// 				if (entry.timestamp != -1 && System.currentTimeMillis() - entry.timestamp >= 30000)
+	// 				{	
+	// 					ripDict.remove(entry.addr);
+	// 					// whether directly connected with router
+	// 					boolean move = true;
+	// 					for (Iface inface: interfaces.values()){
+	// 						if ((inface.getIpAddress() & inface.getSubnetMask()) == entry.addr){
+	// 							move = false;
+	// 						}
+	// 					}
+	// 					if (move == true){
+	// 						routeTable.remove(entry.addr, entry.mask);
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 	};
 
-		Timer timer = new Timer(true);
-		timer.schedule(unsol, 0, 10000);
-		timer.schedule(clean, 0, 1000);
+	// 	Timer timer = new Timer(true);
+	// 	timer.schedule(unsol, 0, 10000);
+	// 	timer.schedule(clean, 0, 1000);
 
-	}
+	// }
 
 	private void sendRip(int type, Ethernet etherPacket, Iface inIface){
 
