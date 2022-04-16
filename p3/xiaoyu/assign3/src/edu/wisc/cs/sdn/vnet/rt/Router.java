@@ -176,6 +176,7 @@ public class Router extends Device
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
 		RouteEntry bestmatch = routeTable.lookup(pkt.getSourceAddress());
+		MACAddress destmac;
 		if(bestmatch != null){
 			int nexthop = bestmatch.getGatewayAddress();
 			if(nexthop == 0){
@@ -183,7 +184,7 @@ public class Router extends Device
 			}
 			ArpEntry ae = arpCache.lookup(nexthop);
 			if(ae != null){
-				MACAddress destmac = ae.getMac();
+				destmac = ae.getMac();
 			}
 			else{
 				destmac = null;
@@ -194,7 +195,7 @@ public class Router extends Device
 		}
 		// MACAddress destMAC = findmac(pkt.getSourceAddress());
 		if (destmac == null) {
-			RouteEntry bestmatch = routeTable.lookup(pkt.getSourceAddress());
+			bestmatch = routeTable.lookup(pkt.getSourceAddress());
 			int nextHopIPAddress = bestmatch.getGatewayAddress();
 			if (nextHopIPAddress == 0) {
 				nextHopIPAddress = pkt.getSourceAddress();
