@@ -230,11 +230,11 @@ public class Router extends Device {
 									// DistanceVectorEntry newDVEntry = new DistanceVectorEntry(ripEntry.getAddress(),
 									// 		ripEntry.getMetric() + 1, 1);
 									// distanceVectorTable.addtoDV(newDVEntry);
-									DVEntryto TOThreadObj = new DVEntryto(newDVEntry);
-									Thread TOThread = new Thread(TOThreadObj);
-									TOThread.start();
-									routeTable.insert(ripEntry.getAddress(), pkt.getSourceAddress(),
-											ripEntry.getSubnetMask(), inIface);
+									// DVEntryto TOThreadObj = new DVEntryto(newDVEntry);
+									// Thread TOThread = new Thread(TOThreadObj);
+									// TOThread.start();
+									// routeTable.insert(ripEntry.getAddress(), pkt.getSourceAddress(),
+									// 		ripEntry.getSubnetMask(), inIface);
 									routeTable.update(dvEntry.IPAddress, ripEntry.getSubnetMask(), pkt.getSourceAddress(), inIface);
 								}
 							}
