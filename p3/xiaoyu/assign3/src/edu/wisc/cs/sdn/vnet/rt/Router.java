@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.*;
 
 import edu.wisc.cs.sdn.vnet.Device;
 import edu.wisc.cs.sdn.vnet.DumpFile;
@@ -13,6 +14,7 @@ import edu.wisc.cs.sdn.vnet.Iface;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.MACAddress;
 import net.floodlightcontroller.packet.RIPv2;
 import net.floodlightcontroller.packet.RIPv2Entry;
 import net.floodlightcontroller.packet.UDP;
@@ -125,6 +127,7 @@ public class Router extends Device
 	}
 
 	private void ICMPMessage(Ethernet etherPacket, Iface inIface, byte type, byte code, boolean echo){
+		IPv4 pkt = (IPv4) etherPacket.getPayload();
 		Ethernet ether = new Ethernet();
 		IPv4 ip = new IPv4();
 		ICMP icmp = new ICMP();
@@ -172,15 +175,15 @@ public class Router extends Device
 		// prepare ether header
 		ether.setEtherType(Ethernet.TYPE_IPv4);
 		ether.setSourceMACAddress(inIface.getMacAddress().toString());
-		RouteEntry bestmatch = routeTable.lookup(ip.getSourceAddress());
+		RouteEntry bestmatch = routeTable.lookup(pkt.getSourceAddress());
 		if(bestmatch != null){
 			int nexthop = bestmatch.getGatewayAddress();
 			if(nexthop == 0){
-				nexthop = ip;
+				nexthop = pkt.getSourceAddress();
 			}
 			ArpEntry ae = arpCache.lookup(nexthop);
 			if(ae != null){
-				destmac = ae.getMac();
+				MACAddress destmac = ae.getMac();
 			}
 			else{
 				destmac = null;
@@ -191,10 +194,10 @@ public class Router extends Device
 		}
 		// MACAddress destMAC = findmac(pkt.getSourceAddress());
 		if (destmac == null) {
-			RouteEntry bestmatch = routeTable.lookup(ip.getSourceAddress());
+			RouteEntry bestmatch = routeTable.lookup(pkt.getSourceAddress());
 			int nextHopIPAddress = bestmatch.getGatewayAddress();
 			if (nextHopIPAddress == 0) {
-				nextHopIPAddress = ip.getSourceAddress();
+				nextHopIPAddress = pkt.getSourceAddress();
 			}
 		}
 		ether.setDestinationMACAddress(destmac.toString());
