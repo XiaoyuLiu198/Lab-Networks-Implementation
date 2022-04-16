@@ -556,7 +556,7 @@ public class Router extends Device {
 				for (Map.Entry<String, Iface> entry : this.getInterfaces().entrySet()) {
 					IPv4 ipPkt = new IPv4();
 					ipPkt.setProtocol(IPv4.PROTOCOL_UDP);
-					ipPkt.setTtl((byte) 64);
+					ipPkt.setTtl((byte) 15);
 					ipPkt.setDestinationAddress("224.0.0.9");
 					ipPkt.setSourceAddress(entry.getValue().getIpAddress());
 					ipPkt.setPayload(udp);
