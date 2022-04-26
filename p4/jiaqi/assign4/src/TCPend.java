@@ -48,7 +48,7 @@ public class TCPend {
                 }
             }
 
-            Receiver receiver = new Receiver(port, mtu, sws, fileName);
+            Receiver receiver = new Receiver(port, mtu, sws);
 
         } else {
             System.out.println("Wrong command.");
