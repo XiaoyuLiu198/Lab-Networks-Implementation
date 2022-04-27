@@ -1,7 +1,7 @@
 import java.io.IOException;
 import java.net.InetAddress;
 
-public class TCPEnd {
+public class TCPend {
   public static void main(String[] args) throws IOException {
     int senderSourcePort = -1;
     int receiverPort = -1;
