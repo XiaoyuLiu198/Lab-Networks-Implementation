@@ -1,31 +1,4 @@
 import java.net.InetAddress;
-<<<<<<< HEAD
-
-public class TCPend {
-  public static void main(String[] args) throws IOException {
-    int senderSourcePort = -1;
-    int receiverPort = -1;
-    InetAddress receiverIp = null;
-    String filename = null;
-    int mtu = -1;
-    int sws = -1;
-
-    if (args.length == 12) { // TCPEnd sender mode
-      for (int i = 0; i < args.length; i++) {
-        String arg = args[i];
-        if (arg.equals("-p")) {
-          senderSourcePort = Integer.parseInt(args[++i]);
-        } else if (arg.equals("-s")) {
-          receiverIp = InetAddress.getByName(args[++i]);
-        } else if (arg.equals("-a")) {
-          receiverPort = Integer.parseInt(args[++i]);
-        } else if (arg.equals("-f")) {
-          filename = args[++i];
-        } else if (arg.equals("-m")) {
-          mtu = Integer.parseInt(args[++i]);
-        } else if (arg.equals("-c")) {
-          sws = Integer.parseInt(args[++i]);
-=======
 import java.net.UnknownHostException;
 
 public class TCPend {
@@ -47,7 +20,6 @@ public class TCPend {
             int mtu = Integer.parseInt(args[9]);
             int sws = Integer.parseInt(args[11]);
             sender(port, remoteAddress, remotePort, file, mtu, sws);
->>>>>>> c848019eb4bb51107a00cddf3c68383835bf8734
         }
         // -p <port> -m <mtu> -c <sws> -f <file name>
         else if(args.length == 8 && args[0].equals("-p") && args[2].equals("-m") &&
