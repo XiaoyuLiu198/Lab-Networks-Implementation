@@ -1,16 +1,4 @@
-JC = javac
-.SUFFIXES: .java .class
-.java.class:
-	$(JC) $*.java
+all: TCPEnd.class
 
-CLASSES = \
-        Receiver.java \
-        Sender.java \
-        TCPend.java  
-
-default: classes
-
-classes: $(CLASSES:.java=.class)
-
-clean:
-	$(RM) *.class
+TCPEnd.class: TCPEnd.java TCPEndHost.java GBNSegment.java Sender.java Receiver.java HandshakeType.java MaxRetransmitException.java SegmentChecksumMismatchException.java UnexpectedFlagException.java
+	javac $^
