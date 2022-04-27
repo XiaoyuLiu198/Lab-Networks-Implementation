@@ -1,368 +1,390 @@
-import java.nio.charset.Charset;
-import java.nio.file.Paths;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.Random;
-import java.math.BigInteger;
-
-//Variables important to the server
-
+import java.util.concurrent.*;
+import java.net.InetAddress;
+import java.net.SocketException;
 
 public class Receiver {
-	long stime;
-	//Variables
-	int port;
-	int mtu;
-	int sws;
-	int nextByteExpected;
-	int lastByteRcvd;
-	int lastByteRead;
-	int numPackets = 0;
-	int dataSegments = 0;
-	int discarded = 0;
-	int outOfSeq = 0;
-	boolean recvb4 = false;
-	//String fileName;
-	InetAddress clientIp;
-	int clientPort;
-	
-	//The two sockets to handle D and ACKs
-	DatagramSocket in_channel;
-	DatagramSocket out_channel;
+	private int port;
+	private int mtu;
+	private int sws;
+	private DatagramSocket listenSk, sendSk;
+	private int prevSeqNum;
+	private int nextSeqNum;
+	private int seqNum;
+	private int nextAck;
+	private int prevAck;
+	private int nextBaseAck;
+	private boolean finishReceiving;
+	private boolean connected;
+	private int payLoadSize;
+	private Timer timer;
+	private Semaphore s;
+	private int timeOutVal;
 
-	//File Output Stream
-	FileOutputStream fos;
+	private static final int SYN = 2;
+	private static final int FIN = 1;
+	private static final int ACK = 0;
 
-	//InetAddress clientAddress;
-	//int clientPort;	
+	private boolean running = true; // wtf is this for, deletable?
 
-	boolean connectionEstablished;
-	boolean synack;
-	boolean clientAck;
+	// function to set timer
+	public void setTimer(boolean newTimer) {
+		if(timer != null) timer.cancel();
+		if(newTimer) {
+			timer = new Timer();
+			timer.schedule(new Timeout(), timeOutVal);
+		}
+	}
 
-	public Receiver(int port, int mtu, int sws) throws SocketException, IOException{
-		this.stime = System.currentTimeMillis();
+	// class for timer if timeout
+	public class Timeout extends TimerTask{
+		public void run(){
+			try{
+				// acquire lock?
+				s.acquire();
+				nextSeqNum = prevAck + 1;
+				// release lock
+				s.release();
+
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+
+	public void printPacket(byte[] packet, boolean receive) {
+		StringBuilder sb = new StringBuilder();
+		if(receive) {
+			sb.append("rcv");
+		} else {
+			sb.append("snd");
+		}
+
+		sb.append(" " + System.nanoTime());
+
+		int lengthWFlags = getLengthWFlags(packet);
+		int length = getLength(lengthWFlags);
+		int sFlag = getBit(lengthWFlags, SYN);
+		int fFlag = getBit(lengthWFlags, FIN);
+		int aFlag = getBit(lengthWFlags, ACK);
+		sb.append(" ");
+		if(sFlag == 1) {
+			sb.append("S");
+		} else {
+			sb.append("-");
+		}
+		sb.append(" ");
+		if(aFlag == 1) {
+			sb.append("A");
+		} else {
+			sb.append("-");
+		}
+		sb.append(" ");
+		if(fFlag == 1) {
+			sb.append("F");
+		} else {
+			sb.append("-");
+		}
+		sb.append(" ");
+		if(length > 0) {
+			sb.append("D");
+		} else {
+			sb.append("-");
+		}
+
+
+		int seqNum = getSeqNum(packet);
+		sb.append(" " + seqNum);
+
+		sb.append(" " + length);
+
+		int ackNum = getAckNum(packet);
+		sb.append(" " + ackNum);
+
+
+		System.out.println(sb.toString());
+	}
+
+	// return -1 if failed (duplicate), else return ackNum
+	public int ackChecker(byte[] packet) {
+		int ackNum = getAckNum(packet);
+		if(ackNum != nextSeqNum) {
+			return -1;
+		}
+
+		if(isFlagOrData(packet)) {
+			int seqNum = getSeqNum(packet);
+			if(seqNum != nextAck) {
+				return -1;
+			}
+		}
+
+		return ackNum;
+
+	}
+
+	public boolean isFlagOrData(byte[] packet) {
+		int lengthWFlags = getLengthWFlags(packet);
+		int length = getLength(lengthWFlags);
+		int sFlag = getBit(lengthWFlags, SYN);
+		int fFlag = getBit(lengthWFlags, FIN);
+		int aFlag = getBit(lengthWFlags, ACK);
+
+		return (sFlag == 1 || fFlag == 1 || length > 0);
+	}
+
+	public void sndUpdate(byte[] packet) {
+		int lengthWFlags = getLengthWFlags(packet);
+		int length = getLength(lengthWFlags);
+		if(isFlagOrData(packet)) {
+			seqNum = nextSeqNum;
+			if(length > 0) {
+				nextSeqNum = seqNum + length;
+			} else {
+				nextSeqNum = seqNum + 1;
+			}
+		}
+		nextBaseAck = nextAck;
+
+	}
+
+	public void rcvUpdate(byte[] packet) {
+		int lengthWFlags = getLengthWFlags(packet);
+		int length = getLength(lengthWFlags);
+		int aFlag = getBit(lengthWFlags, ACK);
+		int inSeqNum = getSeqNum(packet);
+		if(isFlagOrData(packet)) {
+			if(length > 0) {
+				nextAck = inSeqNum + length;
+			} else {
+				nextAck = inSeqNum + 1;
+			}
+		}
+
+		if(aFlag == 1) {
+			prevAck = getAckNum(packet) - 1;
+			setTimer(false);
+		}
+	}
+
+	public Receiver(int port, int mtu, int sws) {
 		this.port = port;
 		this.mtu = mtu;
 		this.sws = sws;
-		this.nextByteExpected = 0;
-		this.lastByteRcvd = 0;
-		this.lastByteRead = 0;
-		
-		this.clientAck = false;
-		in_channel = new DatagramSocket(port);
-		//out_channel = new DatagramSocket();
-		synack = false;
-		fos = null;
-		//Dont open outstreamn yet
-		//fos = new FileOutputStream(fileName);
-		run();
-	}
+		System.out.println("Receiver: serverPort = " + port);
 
-	public float ctime(){
-		return ((System.currentTimeMillis() - stime)/1000);
-	}
+		this.prevSeqNum = -1;
+		this.seqNum = 0;
+		this.nextAck = 0;
+		this.nextSeqNum = 0;
+		this.prevAck = -1;
+		this.nextBaseAck = 0;
+		this.finishReceiving = false;
+		this.timeOutVal = 30000;
+		this.connected = false;
+		this.payLoadSize = mtu - 24;
+		this.s = new Semaphore(1);
 
-	public void run() throws IOException, FileNotFoundException{
-		connectionEstablished = false;
+		try {
+			this.listenSk = new DatagramSocket(port);
+			this.sendSk = new DatagramSocket();
+			System.out.println("Receiver: Listening");
+			try {
+				byte[] incomingData = new byte[mtu];
+				DatagramPacket incomingPacket = new DatagramPacket(incomingData, incomingData.length);
 
-		while(true) {
+				// Make file shit
 
-			byte[] dataPacket = new byte[mtu];
-			DatagramPacket packet = new DatagramPacket(dataPacket, mtu);
-			//System.out.println("---Waiting for packet---");
-			in_channel.receive(packet);
-			
-			//System.out.println("--Received packet ---");
+				while(!finishReceiving) {
+					// receive packet
+					listenSk.receive(incomingPacket);
+					// checkSum check
+					int ackCheckNum = ackChecker(incomingData);
+					if(ackCheckNum != -1) {
+						int destPort = incomingPacket.getPort();
+						InetAddress destAddr = incomingPacket.getAddress();
 
-			//Packet data
-			ByteBuffer bb = ByteBuffer.wrap(packet.getData());
-			//Increment last byte Received
+						int lengthWFlags = getLengthWFlags(incomingData);
+						int length = getLength(lengthWFlags);
+						int sFlag = getBit(lengthWFlags, SYN);
+						int fFlag = getBit(lengthWFlags, FIN);
+						printPacket(incomingData, true);
+						rcvUpdate(incomingData);
+							// syn fin data
+							if(isFlagOrData(incomingData)) {
+									ArrayList<Integer> flagBits = new ArrayList<>();
+									if(length > 0) {
+										if(connected) {
+											if(nextAck + payLoadSize < nextBaseAck + sws && length == payLoadSize) {
+												 continue; //build file here
+											} else {
+												flagBits.add(ACK);
+												byte[] ackPkt = generatePacket(seqNum, new byte[0], flagBits);
+												printPacket(ackPkt, false);
+												listenSk.send(new DatagramPacket(ackPkt, ackPkt.length, destAddr, destPort));
+												sndUpdate(ackPkt);
+											}
+										}
+									} else {
+										// syn or fin
+										if(sFlag == 1){
+											flagBits.add(SYN);
+										}
+										if(fFlag == 1) {
+											flagBits.add(FIN);
+										}
+										// mayday, cumlative data before sending back ack
+										flagBits.add(ACK);
+										byte[] ackPkt = generatePacket(nextSeqNum, new byte[0], flagBits);
+										printPacket(ackPkt, false);
+										listenSk.send(new DatagramPacket(ackPkt, ackPkt.length, destAddr, destPort));
+										if(prevAck + 1 == nextSeqNum) setTimer(true);
+										sndUpdate(ackPkt);
+									}
+							}
+							// ack for FIN or SYN last ack reply for datapakcet
+							else {
+								if(nextSeqNum == 1) {
+									connected = true;
+								} else if(nextSeqNum == 2) {
+									connected = false;
+									finishReceiving = true;
+								}
 
-			int seqNumber = bb.getInt(); //Reads 4 bytes(32 bits)
-			int ackNumber = bb.getInt();
-			long timeStamp = bb.getLong();
-			int length = bb.getInt();
-			//System.out.println("length in binary" + Integer.toBinaryString(length));
-			String dataPortion = Integer.toBinaryString(length);
-			//System.out.println("Length field in binary " + dataPortion);
-			int padding_length = 32 - dataPortion.length();
-			StringBuilder sb = new StringBuilder(padding_length);
-			for(int i=0;i<padding_length;i++){
-				sb.append('0');
-			}
-			sb.append(dataPortion);
-			String paddedDataPortion = sb.toString();
-			//System.out.println("Length after padding " + paddedDataPortion);
-
-			dataPortion = paddedDataPortion.substring(0, 28);
-			//System.out.println("Only the first 28 bits " + dataPortion);
-			int dataPortionSize = new BigInteger(dataPortion, 2).intValue();
-			//System.out.println("the data size is " + dataPortionSize + "seqNum " + seqNumber);
-			int checkSum = bb.getInt();
-			
-			
-
-
-			//System.out.println("SYN bit is " + getBit(length, 3));
-
-			//Goes into this loop and wait's until we receive SYN segment
-			if(!connectionEstablished){
-
-				//System.out.println("Waiting for connection to establish...");
-				// check if the SYN flag is received
-				if(getBit(length, 3) == 1){
-				        
-                                        System.out.format("\n rcv  S - - - 0 0 0");
-					byte[] fileBuffer = Arrays.copyOfRange(packet.getData(), 24, 24 + dataPortionSize);
-					System.out.println(fileBuffer.toString());
-					
-					String fileToCreate = new String(fileBuffer);
-			//		System.out.println("Name " + fileToCreate);
-
-					File file = new File(fileToCreate);
-					fos = new FileOutputStream(file);
-
-					//Send a SYN + ACK
-					//System.out.println("Initiating connection, file name " + fileToCreate + " , sending back SYN + ACK");
-					
-
-					synack = true;		
-					sendAck(packet,timeStamp, 3, false);
-					System.out.format("\n snd S - A - 0 0 1");
-					numPackets++;
-				}
-
-				//Receive an ACK
-				if(getBit(length, 1) == 1 ){
-					System.out.format("\n rcv  - - A - %d 0 %d",  seqNumber, ackNumber);
-			//		System.out.println("Received ACK from client, proceed to tranfer");
-					connectionEstablished = true;
-					clientAck = true;
-				}
-				
-				//If we receive a data segment, that means our syn plus ack was received
-				//switch connectionestd to true
-				if(getBit(length, 0) == 1){
-					dataSegments++;
-					System.out.format("\n rcv  - - D - %d %d %d", seqNumber, dataPortionSize, ackNumber);
-					connectionEstablished = true;
-				}
-
-				
-			}
-
-
-
-			if(connectionEstablished){
-				
-				
-				// received a data segment
-				if(getBit(length,0) == 1){
-					dataSegments++;
-					System.out.format("\n rcv  - - D - %d %d %d",  seqNumber, dataPortionSize, ackNumber);
-					//Drop packet if it is corrupted/Wrong checksum
-					if(!checkCsum(seqNumber, checkSum)) {
-						System.out.println("Dropping packets");
-						sendAck(packet, timeStamp, 2, false);
-						discarded++;
-						continue;
+							}
 					}
-					
-					//In-sequence packet
-					if(seqNumber == nextByteExpected) {
-						lastByteRcvd += dataPortionSize;	
-					        	
-						byte[] dataToWrite = Arrays.copyOfRange(packet.getData(), 24, dataPortionSize + 24);
-						fos.write(dataToWrite);
-						lastByteRead += dataToWrite.length;
-						nextByteExpected = lastByteRead;
-
-						//Send an ack
-						sendAck(packet, timeStamp, 2, false);
-						System.out.format("\n snd  - - A - 0 0 %d",  nextByteExpected);
+					// send dup ack, out of order
+					else {
+						int destPort = incomingPacket.getPort();
+						InetAddress destAddr = incomingPacket.getAddress();
+						ArrayList<Integer> flagBits = new ArrayList<>();
+						flagBits.add(ACK);
+						byte[] ackPkt = generatePacket(seqNum, new byte[0], flagBits);
+						printPacket(ackPkt, false);
+						listenSk.send(new DatagramPacket(ackPkt, ackPkt.length, destAddr, destPort));
+						sndUpdate(ackPkt);
 					}
 
-
-
-					//Out-of-sequence packets
-					else{
-						outOfSeq++;
-						//Send the last contigous byte Received as ACK
-						System.out.format("\n snd  - - A - 0 0 %d",  lastByteRead);
-						sendAck(packet, timeStamp, 2, false);
-
-					}
 				}
-				// if FIN segment has been received
-				else if(getBit(length, 2) == 1){
-					System.out.format("\n rcv - F - - %d 0 0", seqNumber);	
-					System.out.format("\n snd  - F A - 1 0 %d", seqNumber + 1);
-					//sending fin + ack
-				        sendAck(packet, timeStamp, 5, true);	
-					if(!recvb4){
-						recvb4 = true;
-					//Once we get the fin segment, we send the fin segment, we print out the final statistics
-						System.out.format("\nAmount of data Received: %d bytes", lastByteRead);
-						System.out.format("\nNumber of Ack Packets Sent: %d", numPackets);
-						System.out.format("\nNumber of data packets received: %d", dataSegments);
-						System.out.format("\nNumber of data packets discarded(out of sequence): %d", outOfSeq);
-						System.out.format("\nNumber of data packets discarded(wrong checksum): %d", discarded);
-				        }	
-				}
-
-			}//if
-
-
-
-
-		}//while
-
-
-	}
-
-	//Method that generates an ACK packet with the appropriate ACK number
-	public void sendAck(DatagramPacket p, long timeStamp,int flag, boolean lastPacket) throws IOException{
-		numPackets++;
-		clientIp = p.getAddress();
-		clientPort = p.getPort();
-
-		//Create a message buffer of MTU size
-		byte[] data = new byte[20];
-		ByteBuffer bb = ByteBuffer.wrap(data);
-
-		bb.putInt(0); //Sequence number
-		if(lastPacket){
-			bb.putInt(lastByteRead + 1); //this is the ACK number
-		}
-		else{
-			bb.putInt(lastByteRead); //this is the ACK number
-		}
-
-		
-
-		bb.putLong(timeStamp); //put in the time stamp, to calculate RTT
-
-		// send a SYN + ACK segment
-		String mask = null;
-
-		// ACK
-		if(flag == 2){
-			mask = "0000000000000000000000000000010";
-		}
-		// SYN + ACK
-		else if(flag == 3 ) {
-			mask = "0000000000000000000000000001010";
-		}
-		// Fin
-		else if(flag == 5) {
-			mask = "00000000000000000000000000000100";
-		}
-
-		int maskValue = new BigInteger(mask, 2).intValue();
-		bb.putInt(maskValue);
-
-		DatagramPacket synAckPacket = new DatagramPacket(data, data.length, clientIp, clientPort);
-		in_channel.send(synAckPacket);
-		
-
-	}
-
-	
-
-	//Verify the checksum, if the calculated checksum != checksum received, error
-	public boolean checkCsum(int seqNum, int checksumRcvd) {
-		String binary = Integer.toBinaryString(seqNum);
-		String padding = null;
-		if(binary.length() != 32) {
-
-			int offset = 32 - binary.length();
-			StringBuilder sb = new StringBuilder();
-			for(int i = 0; i < offset; i++)
-			sb.append('0');
-
-			sb.append(binary);
-			padding = sb.toString();
-
-		}
-
-		String part1 = padding.substring(0, 16);
-		String part2 = padding.substring(16);
-
-		//Adding the 2 16-bit values
-		String result = addBinary(part1, part2);
-		//Taking 1's complement
-		result = invert(result);
-
-		int calculatedChecksum = new BigInteger(result, 2).intValue();
-
-		if(calculatedChecksum != checksumRcvd)
-			return false;
-
-		return true;
-	}
-
-	public String addBinary(String p1, String p2) {
-
-		// Initialize result
-		String result = "";
-
-		// Initialize digit sum
-		int s = 0;
-
-		// Travers both strings starting
-		// from last characters
-		int i = p1.length() - 1, j = p2.length() - 1;
-		while (i >= 0 || j >= 0 || s == 1)
-		{
-
-			// Comput sum of last
-			// digits and carry
-			s += ((i >= 0)? p1.charAt(i) - '0': 0);
-			s += ((j >= 0)? p2.charAt(j) - '0': 0);
-
-			// If current digit sum is
-			// 1 or 3, add 1 to result
-			result = (char)(s % 2 + '0') + result;
-
-			// Compute carry
-			s /= 2;
-
-			// Move to next digits
-			i--; j--;
-		}
-
-		return result;
-
-	}
-
-	public String invert(String binary) {
-		StringBuilder sb = new StringBuilder();
-		for(int i = 0; i < binary.length(); i++) {
-			if(binary.charAt(i) == '0') {
-				sb.append('1');
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.exit(-1);
+			} finally {
 			}
-			else {
-				sb.append('0');
-			}
+		} catch(Exception e) {
+			e.printStackTrace();
+			System.exit(1);
 		}
-		return sb.toString();
-
 	}
 
+	// header bytes = 24 bytes
+	// seqNum = 0 to 4
+	public int getSeqNum(byte[] pkt) {
+		byte[] receivedSeqNumBytes = copyOfRange(pkt, 0, 4);
+		return ByteBuffer.wrap(receivedSeqNumBytes).getInt();
+	}
 
+	// ackNum = 4 to 8
+	public int getAckNum(byte[] pkt) {
+		byte[] receivedAckNumBytes = copyOfRange(pkt, 4, 8);
+		return ByteBuffer.wrap(receivedAckNumBytes).getInt();
+	}
 
+	// timstamp = 8 to 16
+	public long getTimeStamp(byte[] pkt) {
+		byte[] receivedTimeStampBytes = copyOfRange(pkt, 8, 16);
+		return ByteBuffer.wrap(receivedTimeStampBytes).getLong();
+	}
+
+	// lengthWflags = 16 to 20
+	public int getLengthWFlags(byte[] pkt) {
+		byte[] receivedLengthWFlagsBytes = copyOfRange(pkt, 16, 20);
+		return ByteBuffer.wrap(receivedLengthWFlagsBytes).getInt();
+	}
+
+	// zeroes = 20 to 22
+	public short getZeroes(byte[] pkt) {
+		byte[] receivedZeroesBytes = copyOfRange(pkt, 20, 22);
+		return ByteBuffer.wrap(receivedZeroesBytes).getShort();
+	}
+
+	// checksum = 22 to 24
+	public short getCheckSumNum(byte[] pkt) {
+		byte[] receivedCheckSumBytes = copyOfRange(pkt, 22, 24);
+		return ByteBuffer.wrap(receivedCheckSumBytes).getShort();
+	}
+
+	// function use to get flag bits
 	public int getBit(int n, int k) {
 		return (n >> k) & 1;
 	}
+
+	// function to get length
+	public int getLength(int n) {
+		return n >> 3;
+	}
+
+	// function to copy temporary buffer into new buffer with adjusted length
+	public byte[] copyOfRange(byte[] srcArr, int start, int end) {
+		int length = (end > srcArr.length) ? srcArr.length - start : end - start;
+		byte[] newArr = new byte[length];
+		System.arraycopy(srcArr, start, newArr, 0, length);
+		return newArr;
+	}
+
+	// function to generate packet with sequNum, ackNum, timestamp, lengthWflags, zeroes (16 bits), checksum, currentByteBuffer
+	// header bytes = 24 bytes
+	// seqNum = 0 to 4
+	// ackNum = 4 to 8
+	// timstamp = 8 to 16
+	// lengthWflags = 16 to 20
+	// zeroes = 20 to 22
+	// chekcsum = 22 to 24
+	public byte[] generatePacket(int seqNum, byte[] dataBytes, ArrayList<Integer> flagBits) {
+		// seqNum
+		byte[] seqNumBytes = ByteBuffer.allocate(4).putInt(seqNum).array();
+		// acknowledgement : next byte expected in reverse direction
+		byte[] ackNumBytes = ByteBuffer.allocate(4).putInt(nextAck).array();
+		// timestamp
+		long currTimeStamp = System.nanoTime();
+		byte[] timeStampBytes = ByteBuffer.allocate(8).putLong(currTimeStamp).array();
+		// length, SYN, ACK, FIN, SYN bit = 2, FIN bit = 1, ACK bit = 0
+		int length = dataBytes.length;
+		int lengthWFlags = length << 3;
+		for(int flagBit: flagBits) {
+			int mask = 1 << flagBit;
+			lengthWFlags = lengthWFlags | mask;
+		}
+		byte[] lengthWFlagsBytes = ByteBuffer.allocate(4).putInt(lengthWFlags).array();
+		// zeroes
+		byte[] zeroes = new byte[2];
+		// calculate checksum ???
+		short checkSum = 0; // use checksum func here
+		byte[] checkSumBytes = ByteBuffer.allocate(2).putShort(checkSum).array();
+		// currByteBuffer
+		ByteBuffer packetBuff = ByteBuffer.allocate(4 + 4 + 8 + 4 + 2 + 2 + dataBytes.length);
+
+		// seqNum
+		packetBuff.put(seqNumBytes);
+		// ackNum
+		packetBuff.put(ackNumBytes);
+		// timeStamp
+		packetBuff.put(timeStampBytes);
+		// lengthWFlags
+		packetBuff.put(lengthWFlagsBytes);
+		// zeroes
+		packetBuff.put(zeroes);
+		// checkSum
+		packetBuff.put(checkSumBytes);
+		// dataBytes
+		packetBuff.put(dataBytes);
+		return packetBuff.array();
+
+	}
+
 }

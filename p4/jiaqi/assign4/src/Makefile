@@ -3,10 +3,10 @@ JC = javac
 .java.class:
 	$(JC) $*.java
 
-CLASSES = \
-        Receiver.java \
-        Sender.java \
-        TCPend.java  
+CLASSES =\
+	 Receiver.java \
+	 Sender.java \
+	 TCPend.java  
 
 default: classes
 
