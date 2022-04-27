@@ -1,48 +1,109 @@
-import java.util.*;
+import java.io.IOException;
+import java.net.InetAddress;
 
-class TCPend {
+public class TCPEnd {
+  public static void main(String[] args) throws IOException {
+    int senderSourcePort = -1;
+    int receiverPort = -1;
+    InetAddress receiverIp = null;
+    String filename = null;
+    int mtu = -1;
+    int sws = -1;
 
-    public static void main(String[] args) {
-        if(args.length != 12 && args.length != 6) {
-            return;
+    if (args.length == 12) { // TCPEnd sender mode
+      for (int i = 0; i < args.length; i++) {
+        String arg = args[i];
+        if (arg.equals("-p")) {
+          senderSourcePort = Integer.parseInt(args[++i]);
+        } else if (arg.equals("-s")) {
+          receiverIp = InetAddress.getByName(args[++i]);
+        } else if (arg.equals("-a")) {
+          receiverPort = Integer.parseInt(args[++i]);
+        } else if (arg.equals("-f")) {
+          filename = args[++i];
+        } else if (arg.equals("-m")) {
+          mtu = Integer.parseInt(args[++i]);
+        } else if (arg.equals("-c")) {
+          sws = Integer.parseInt(args[++i]);
         }
-        int port = 0;
-        String remoteIP = null;
-        int serverport = 0;
-        String filename = null;
-        int mtu = 0;
-        int sws = 0;
-        if(args.length == 12) {
-            if(args[0].equals("-p") && args[2].equals("-s") && args[4].equals("-a") && args[6].equals("-f") && args[8].equals("-m") && args[10].equals("-c")) {
-                // Get respective params
-                port = Integer.parseInt(args[1]);
-                remoteIP = args[3];
-                serverport = Integer.parseInt(args[5]);
-                filename = args[7];
-                mtu = Integer.parseInt(args[9]);
-                sws = Integer.parseInt(args[11]);
+      }
 
-                // Construct the entity Host
-                Client curClient = new Client(port, remoteIP, serverport, filename, mtu, sws);
-                curClient.connectionRequest();
-                curClient.runClient();
-            } else {
-                System.out.println("Usage for client: java TCPend -p <port> -s <remote-IP> -a <remote-port> -f <file name> -m <mtu> -c <sws>");
-            } 
-        } else if(args.length == 6) {
-            if(args[0].equals("-p") && args[2].equals("-m") && args[4].equals("-c")) {
-                // Get respective params
-                port = Integer.parseInt(args[1]);
-                mtu = Integer.parseInt(args[3]);
-                sws = Integer.parseInt(args[5]);
+      if (receiverIp == null || receiverPort == -1 || senderSourcePort == -1 || sws == -1
+          || mtu == -1 || filename == null) {
+        System.out.println(
+            "Sender: java TCPend -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>");
+      }
 
-                // Construct the entity Client
-                Host curHost = new Host(port, mtu, sws);
-                curHost.runHost();
-            } else {
-                System.out.println("Usage for server: java TCPend -p <port> -m <mtu> -c <sws>");
-            }
+      long startTime = System.nanoTime();
+
+      Sender sender = new Sender(senderSourcePort, receiverIp, receiverPort, filename, mtu, sws);
+      try {
+        sender.openConnection();
+        sender.sendData();
+        sender.closeConnection();
+      } catch (MaxRetransmitException e) {
+        e.printStackTrace();
+      } catch (UnexpectedFlagException e) {
+        e.printStackTrace();
+      } finally {
+        sender.socket.close();
+        sender.printFinalStatsHeader();
+        long endTime = System.nanoTime();
+        float runTime = (endTime - startTime) / 1000000000F;
+        System.out.println("=====Other Stats=====");
+        System.out.println("    Runtime (s): " + TCPEndHost.threePlaces.format(runTime));
+      }
+    } else if (args.length == 8) { // TCPEnd receiver mode
+      for (int i = 0; i < args.length; i++) {
+        String arg = args[i];
+        if (arg.equals("-p")) {
+          receiverPort = Integer.parseInt(args[++i]);
+        } else if (arg.equals("-f")) {
+          filename = args[++i];
+        } else if (arg.equals("-m")) {
+          mtu = Integer.parseInt(args[++i]);
+        } else if (arg.equals("-c")) {
+          sws = Integer.parseInt(args[++i]);
         }
+      }
 
+      if (receiverPort == -1 || mtu == -1 || sws == -1 || filename == null) {
+        System.out.println("Receiver: java TCPend -p <port> -m <mtu> -c <sws> -f <file name>");
+      }
+
+      long startTime = System.nanoTime();
+
+      Receiver receiver = new Receiver(receiverPort, filename, mtu, sws);
+      try {
+        boolean isConnected = false;
+        GBNSegment firstAckReceived = null;
+        while (!isConnected) {
+          try {
+            firstAckReceived = receiver.openConnection();
+          } catch (SegmentChecksumMismatchException e) {
+            e.printStackTrace();
+            continue;
+          } catch (UnexpectedFlagException e) {
+            e.printStackTrace();
+            continue;
+          }
+          isConnected = true;
+        }
+        receiver.receiveDataAndClose(firstAckReceived);
+      } catch (MaxRetransmitException e) {
+        e.printStackTrace();
+      }
+      receiver.socket.close();
+      receiver.printFinalStatsHeader();
+
+      long endTime = System.nanoTime();
+      float runTime = (endTime - startTime) / 1000000000F;
+      System.out.println("=====Other Stats=====");
+      System.out.println("    Runtime (s): " + TCPEndHost.threePlaces.format(runTime));
+    } else {
+      System.out.println(
+          "Sender: java TCPend -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>");
+      System.out.println("Receiver: java TCPend -p <port> -m <mtu> -c <sws> -f <file name>");
     }
+  }
 }
