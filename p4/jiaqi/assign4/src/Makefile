@@ -1,11 +1,4 @@
-compile: TCPend.class TCPpacket.class
+all: TCPEnd.class
 
-TCPend.class: TCPend.java
-	javac TCPend.java
-
-TCPpacket.class: TCPpacket.java
-	javac TCPpacket.java
-
-clean: 
-	rm *.class
-	rm test*
+TCPEnd.class: TCPEnd.java TCPEndHost.java GBNSegment.java Sender.java Receiver.java HandshakeType.java MaxRetransmitException.java SegmentChecksumMismatchException.java UnexpectedFlagException.java
+	javac $^
