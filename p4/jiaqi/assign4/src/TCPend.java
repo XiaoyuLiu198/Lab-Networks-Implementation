@@ -1,54 +1,58 @@
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
 public class TCPend {
+    private static final short DEFAULT_PORT = 8888;
     public static void main(String[] args) {
-        // -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>
-        if(args.length == 12 && args[0].equals("-p") && args[2].equals("-s") &&
-            args[4].equals("-a") && args[6].equals("-f") && args[8].equals("-m")
-            && args[10].equals("-c")) {
-            
-            int port = Integer.parseInt(args[1]);
-            InetAddress remoteAddress = null;
-            try {
-                remoteAddress = InetAddress.getByName(args[3]);
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
+        short port = DEFAULT_PORT;        // port number at which the client will run
+        String remoteIP = null;           // the IP address of receiver
+        short remotePort = DEFAULT_PORT;  // the port at which the remote receiver is running
+        String fileName = null;           // the file to be sent
+        int mtu = -1;                     // maximum transmission unit in bytes
+        int sws = -1;                     // sliding window size in number of segments
+        
+        if (args.length == 12) {
+            for (int i = 0; i < args.length; i++) {
+                String arg = args[i];
+                if (arg.equals("-p")) {
+                    port = Short.parseShort(args[++i]);
+                } else if (arg.equals("-s")) {
+                    remoteIP = args[++i];
+                } else if (arg.equals("-a")) {
+                    remotePort = Short.parseShort(args[++i]);
+                } else if (arg.equals("-f")) {
+                    fileName = args[++i];
+                } else if (arg.equals("-m")) {
+                    mtu = Integer.parseInt(args[++i]);
+                } else if (arg.equals("-c")) {
+                    sws = Integer.parseInt(args[++i]);
+                } else {
+                    System.out.println("Wrong command.");
+                    return;
+                }
             }
-            int remotePort = Integer.parseInt(args[5]);
-            String file = args[7];
-            int mtu = Integer.parseInt(args[9]);
-            int sws = Integer.parseInt(args[11]);
-            sender(port, remoteAddress, remotePort, file, mtu, sws);
-        }
-        // -p <port> -m <mtu> -c <sws> -f <file name>
-        else if(args.length == 8 && args[0].equals("-p") && args[2].equals("-m") &&
-            args[4].equals("-c") && args[6].equals("-f")) {
-            int port = Integer.parseInt(args[1]);
-            int mtu = Integer.parseInt(args[3]);
-            int sws = Integer.parseInt(args[5]);
-            String file = args[7];
-            receiver(port, mtu, sws, file);
-        }
-        // error
-        else {
-            System.out.println("usage:\n"
-                + "java TCPend -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>\n"
-                + "java TCPend -p <port> -m <mtu> -c <sws> -f <file name>");
-            System.exit(1);
-        }
-    }
+            
+            Sender sender = new Sender(port, remoteIP, remotePort, fileName, mtu, sws);
 
-    public static void sender(int port, InetAddress remoteAddress, int remotePort,
-        String file, int mtu, int sws) {
-        Sender sender = new Sender(port, mtu, sws, file, remoteAddress, remotePort);
-        sender.connect();
-        sender.run();
-    }
+        } else if (args.length == 6) {
+            for (int i = 0; i < args.length; i++) {
+                String arg = args[i];
+                if (arg.equals("-p")) {
+                    port = Short.parseShort(args[++i]);
+                } else if (arg.equals("-m")) {
+                    mtu = Integer.parseInt(args[++i]);
+                } else if (arg.equals("-c")) {
+                    sws = Integer.parseInt(args[++i]);
+                } else if (arg.equals("-f")) {
+                    fileName = args[++i];
+                } else {
+                    System.out.println("Wrong command.");
+                    return;
+                }
+            }
 
-    public static void receiver(int port, int mtu, int sws, String file) {
-        Receiver receiver = new Receiver(port, mtu, sws, file);
-        receiver.connect();
-        receiver.run();
+            Receiver receiver = new Receiver(port, mtu, sws);
+
+        } else {
+            System.out.println("Wrong command.");
+            return;
+        }
     }
 }
