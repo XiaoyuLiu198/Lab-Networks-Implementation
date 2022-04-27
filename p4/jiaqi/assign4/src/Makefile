@@ -1,16 +1,11 @@
-JC = javac
-.SUFFIXES: .java .class
-.java.class:
-	$(JC) $*.java
+compile: TCPend.class TCPpacket.class
 
-CLASSES = \
-        Receiver.java \
-        Sender.java \
-        TCPend.java  
+TCPend.class: TCPend.java
+	javac TCPend.java
 
-default: classes
+TCPpacket.class: TCPpacket.java
+	javac TCPpacket.java
 
-classes: $(CLASSES:.java=.class)
-
-clean:
-	$(RM) *.class
+clean: 
+	rm *.class
+	rm test*
