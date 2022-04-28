@@ -10,7 +10,7 @@ public class TCPend {
     int mtu = -1;
     int sws = -1;
 
-    if (args.length == 12) { // TCPEnd sender mode
+    if (args.length == 12) { 
       for (int i = 0; i < args.length; i++) {
         String arg = args[i];
         if (arg.equals("-p")) {
@@ -34,8 +34,6 @@ public class TCPend {
             "Sender: java TCPend -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>");
       }
 
-      long startTime = System.nanoTime();
-
       Sender sender = new Sender(senderSourcePort, receiverIp, receiverPort, filename, mtu, sws);
       try {
         sender.openConnection();
@@ -48,12 +46,9 @@ public class TCPend {
       } finally {
         sender.socket.close();
         sender.printFinalStatsHeader();
-        long endTime = System.nanoTime();
-        float runTime = (endTime - startTime) / 1000000000F;
-        System.out.println("=====Other Stats=====");
-        System.out.println("    Runtime (s): " + TCPEndHost.threePlaces.format(runTime));
+
       }
-    } else if (args.length == 8) { // TCPEnd receiver mode
+    } else if (args.length == 8) { 
       for (int i = 0; i < args.length; i++) {
         String arg = args[i];
         if (arg.equals("-p")) {
@@ -70,8 +65,6 @@ public class TCPend {
       if (receiverPort == -1 || mtu == -1 || sws == -1 || filename == null) {
         System.out.println("Receiver: java TCPend -p <port> -m <mtu> -c <sws> -f <file name>");
       }
-
-      long startTime = System.nanoTime();
 
       Receiver receiver = new Receiver(receiverPort, filename, mtu, sws);
       try {
@@ -96,10 +89,6 @@ public class TCPend {
       receiver.socket.close();
       receiver.printFinalStatsHeader();
 
-      long endTime = System.nanoTime();
-      float runTime = (endTime - startTime) / 1000000000F;
-      System.out.println("=====Other Stats=====");
-      System.out.println("    Runtime (s): " + TCPEndHost.threePlaces.format(runTime));
     } else {
       System.out.println(
           "Sender: java TCPend -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>");
