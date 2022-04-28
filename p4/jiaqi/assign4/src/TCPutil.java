@@ -45,13 +45,12 @@ public class TCPutil {
     }
 
     public static void getStatistics() {
-        System.out.println("---------------------------------------------------------");
         System.out.println("Bytes of data sent: " + (double) numByteSent);
         System.out.println("Bytes of data received: " + (double) numByteReceived);
         System.out.println("Number of packets sent: " + numPacketSent);
         System.out.println("Number of packets received: " + numPacketReceived);
         System.out.println("Number of out-of-sequence packets discarded: " + numOutofSequence);
-        System.out.println("Number of checksum-incorrect packets discarded" + numIncorrectChecksum);
+        System.out.println("Number of checksum-incorrect packets discarded: " + numIncorrectChecksum);
         System.out.println("Number of retransmissions: " + numRetransmission);
         System.out.println("Number of duplicate acknowledgements: " + numDuplicateAck);
     }

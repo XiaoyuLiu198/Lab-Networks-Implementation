@@ -13,7 +13,7 @@ public class TCPsocket {
     public int sws;
     public int sequenceNumber;
     public int ackNumber;
-    
+
     public TCPsegment handlePacket(int mtu) throws IOException {
         byte[] data = new byte[mtu + 24];
         DatagramPacket packet = new DatagramPacket(data, mtu + 24);
@@ -39,7 +39,6 @@ public class TCPsocket {
         }
 
         TCPutil.numPacketReceived++;
-
         TCPutil.getReceiverStatus(segment);
 
         return segment;
@@ -60,5 +59,5 @@ public class TCPsocket {
         }
         TCPutil.getSenderStatus(segment);
     }
-    
+
 }
