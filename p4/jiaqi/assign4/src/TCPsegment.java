@@ -2,10 +2,10 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 enum ConnectionState {
-  SYN, 
-  SYN_ACK, 
-  ACK, 
-  FIN, 
+  SYN,
+  SYN_ACK,
+  ACK,
+  FIN,
   FIN_ACK
 }
 
@@ -25,46 +25,65 @@ public class TCPsegment implements Comparable<TCPsegment> {
     this(0, 0, System.nanoTime(), false, false, false, new byte[0], 0);
   }
 
-  public TCPsegment(int bsNum, int ackNum, boolean syn, boolean fin, boolean ack,
-      byte[] payloadData, int dataLength) {
-    this(bsNum, ackNum, System.nanoTime(), syn, fin, ack, payloadData, dataLength);
+  public TCPsegment(int sequenceNum, int ackNum, boolean syn, boolean fin, boolean ack,
+      byte[] data, int dataLength) {
+    this(sequenceNum, ackNum, System.nanoTime(), syn, fin, ack, data, dataLength);
   }
 
-  public TCPsegment(int bsNum, int ackNum, long timestamp, boolean syn, boolean fin, boolean ack,
-      byte[] payloadData, int dataLength) {
-    this.sequenceNum = bsNum;
+  public TCPsegment(int sequenceNum, int ackNum, long timestamp, boolean syn, boolean fin, boolean ack,
+      byte[] data, int dataLength) {
+    this.sequenceNum = sequenceNum;
     this.ackNum = ackNum;
     this.time = timestamp;
     this.syn = syn;
     this.fin = fin;
     this.ack = ack;
     this.checksum = 0;
-    this.data = payloadData;
+    this.data = data;
     this.dataLength = dataLength;
   }
 
-  public static TCPsegment getDataSegment(int bsNum, int ackNum, byte[] payloadData) {
-    return new TCPsegment(bsNum, ackNum, false, false, true, payloadData, payloadData.length);
+  public static TCPsegment getDataSegment(int sequenceNum, int ackNum, byte[] data) {
+    return new TCPsegment(sequenceNum, ackNum, false, false, true, data, data.length);
   }
 
-  public static TCPsegment getConnectionSegment(int bsNum, int ackNum, ConnectionState type) {
-    if (type == ConnectionState.SYN) {
-      return new TCPsegment(bsNum, ackNum, true, false, false, new byte[0], 0);
-    } else if (type == ConnectionState.SYN_ACK) {
-      return new TCPsegment(bsNum, ackNum, true, false, true, new byte[0], 0);
-    } else if (type == ConnectionState.ACK) {
-      return new TCPsegment(bsNum, ackNum, false, false, true, new byte[0], 0);
-    } else if (type == ConnectionState.FIN) {
-      return new TCPsegment(bsNum, ackNum, false, true, false, new byte[0], 0);
-    } else if (type == ConnectionState.FIN_ACK) {
-      return new TCPsegment(bsNum, ackNum, false, true, true, new byte[0], 0);
-    } else {
-      return null;
+  public static TCPsegment getConnectionSegment(int sequenceNum, int ackNum, ConnectionState state) {
+    switch (state) {
+      case SYN:
+        return new TCPsegment(sequenceNum, ackNum, true, false, false, new byte[0], 0);
+      case SYN_ACK:
+        return new TCPsegment(sequenceNum, ackNum, true, false, true, new byte[0], 0);
+      case ACK:
+        return new TCPsegment(sequenceNum, ackNum, false, false, true, new byte[0], 0);
+      case FIN:
+        return new TCPsegment(sequenceNum, ackNum, false, true, false, new byte[0], 0);
+      case FIN_ACK:
+        return new TCPsegment(sequenceNum, ackNum, false, true, true, new byte[0], 0);
+      default:
+        return null;
     }
+    // if (state == ConnectionState.SYN) {
+    // return new TCPsegment(sequenceNum, ackNum, true, false, false, new byte[0],
+    // 0);
+    // } else if (state == ConnectionState.SYN_ACK) {
+    // return new TCPsegment(sequenceNum, ackNum, true, false, true, new byte[0],
+    // 0);
+    // } else if (state == ConnectionState.ACK) {
+    // return new TCPsegment(sequenceNum, ackNum, false, false, true, new byte[0],
+    // 0);
+    // } else if (state == ConnectionState.FIN) {
+    // return new TCPsegment(sequenceNum, ackNum, false, true, false, new byte[0],
+    // 0);
+    // } else if (state == ConnectionState.FIN_ACK) {
+    // return new TCPsegment(sequenceNum, ackNum, false, true, true, new byte[0],
+    // 0);
+    // } else {
+    // return null;
+    // }
   }
 
-  public static TCPsegment getAckSegment(int bsNum, int ackNum, long timestamp) {
-    return new TCPsegment(bsNum, ackNum, timestamp, false, false, true, new byte[0], 0);
+  public static TCPsegment getAckSegment(int sequenceNum, int ackNum, long timestamp) {
+    return new TCPsegment(sequenceNum, ackNum, timestamp, false, false, true, new byte[0], 0);
   }
 
   public byte[] serialize() {
