@@ -79,7 +79,7 @@ public class TCPreceiver extends TCPsocket {
                     receivedAck = true;
                 }
             } catch (SocketTimeoutException e) {
-                System.err.println("Timeout while waiting for first ACK!");
+                System.out.println("Timeout for first ACK.");
                 TCPutil.numRetransmission++;
                 if (TCPutil.numRetransmission > 16) {
                     System.exit(1);

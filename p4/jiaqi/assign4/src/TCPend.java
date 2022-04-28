@@ -46,7 +46,7 @@ public class TCPend {
                 TCPutil.getStatistics();
             }
 
-        } else if (args.length == 6) {
+        } else if (args.length == 8) {
             for (int i = 0; i < args.length; i++) {
                 String arg = args[i];
                 if (arg.equals("-p")) {
@@ -76,7 +76,7 @@ public class TCPend {
                 e.printStackTrace();
             } finally {
                 receiver.socket.close();
-                System.out.println("----------------- Sender Closed -----------------");
+                System.out.println("----------------- Receiver Closed -----------------");
                 TCPutil.getStatistics();
             }
 

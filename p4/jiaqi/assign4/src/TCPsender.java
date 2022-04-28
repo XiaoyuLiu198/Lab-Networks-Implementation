@@ -81,7 +81,7 @@ public class TCPsender extends TCPsocket {
                                     return;
                                 }
 
-                                slideWindow(dis, currAckNum, numByteWritten, numByteRead);
+                                slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
                                 numByteWritten = TCPutil.numByteSent;
                                 currRetransmit++;
                                 break;
@@ -95,7 +95,7 @@ public class TCPsender extends TCPsocket {
                             System.out.println("Reached maximum number of retransmissions.");
                             return;
                         }
-                        slideWindow(dis, currAckNum, numByteWritten, numByteRead);
+                        slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
                         numByteWritten = TCPutil.numByteSent;
                         currRetransmit++;
                         break;
@@ -203,7 +203,7 @@ public class TCPsender extends TCPsocket {
         }
     }
 
-    private void slideWindow(DataInputStream dis, int currAckNum, int numByteWritten, int numByteRead)
+    private void slidingWindow(DataInputStream dis, int currAckNum, int numByteWritten, int numByteRead)
             throws IOException {
         dis.reset();
         dis.skip(currAckNum - (numByteWritten - numByteRead));
