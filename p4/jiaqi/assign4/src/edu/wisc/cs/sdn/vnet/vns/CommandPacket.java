@@ -6,13 +6,13 @@ import net.floodlightcontroller.packet.Ethernet;
 
 public class CommandPacket extends Command
 {
-	protected String mInterfaceName;
-	protected Ethernet etherPacket;
+	public String mInterfaceName;
+	public Ethernet etherPacket;
 	
 	public CommandPacket()
 	{ super(Command.VNS_PACKET); }
 	
-	protected CommandPacket deserialize(ByteBuffer buf)
+	public CommandPacket deserialize(ByteBuffer buf)
 	{
 		super.deserialize(buf);
 				
@@ -27,10 +27,10 @@ public class CommandPacket extends Command
 		return this;
 	}
 	
-	protected int getSize()
+	public int getSize()
 	{ return super.getSize() + 16; }
 	
-	protected byte[] serialize()
+	public byte[] serialize()
 	{
 		byte[] packet = this.etherPacket.serialize();
 		int size = this.getSize() + packet.length;

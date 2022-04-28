@@ -17,8 +17,8 @@ public abstract class Command
 	
 	public static final int ID_SIZE = 32;
 	
-	protected int mLen;
-	protected int mType;
+	public int mLen;
+	public int mType;
 	
 	public Command(int mType)
 	{
@@ -26,14 +26,14 @@ public abstract class Command
 		this.mType = mType;
 	}
 	
-	protected Command deserialize(ByteBuffer buf)
+	public Command deserialize(ByteBuffer buf)
 	{
 		this.mLen = buf.getInt();
 		this.mType = buf.getInt();
 		return this;
 	}
 	
-	protected byte[] serialize()
+	public byte[] serialize()
 	{
 		byte[] data = new byte[8];
         ByteBuffer bb = ByteBuffer.wrap(data);
@@ -44,7 +44,7 @@ public abstract class Command
         return data;
 	}
 	
-	protected int getSize()
+	public int getSize()
 	{ return 4 + 4; }
 	
 	

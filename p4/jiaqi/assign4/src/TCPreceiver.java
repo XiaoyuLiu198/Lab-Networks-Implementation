@@ -11,8 +11,8 @@ import java.util.HashSet;
 import java.util.PriorityQueue;
 
 public class TCPreceiver extends TCPsocket {
-  protected InetAddress senderIp;
-  protected int senderPort;
+  public InetAddress senderIp;
+  public int senderPort;
 
   public TCPreceiver(int receiverPort, String filename, int mtu, int sws) {
     this.receiverPort = receiverPort;
@@ -33,9 +33,9 @@ public class TCPreceiver extends TCPsocket {
 
     // Receive First Syn Packet
     // Do this manually to get the sender IP and port
-    byte[] bytes = new byte[mtu + TCPsegment.HEADER_LENGTH_BYTES];
+    byte[] bytes = new byte[mtu + 24];
     DatagramPacket handshakeSynPacket =
-        new DatagramPacket(bytes, mtu + TCPsegment.HEADER_LENGTH_BYTES);
+        new DatagramPacket(bytes, mtu + 24);
     socket.receive(handshakeSynPacket);
     byte[] handshakeSynBytes = handshakeSynPacket.getData();
     TCPsegment handshakeSyn = new TCPsegment();
@@ -49,7 +49,7 @@ public class TCPreceiver extends TCPsocket {
     if (origChk != calcChk) {
       throw new SegmentChecksumMismatchException();
     }
-    if (handshakeSyn.isSyn && !handshakeSyn.isAck && !handshakeSyn.isFin) {
+    if (handshakeSyn.syn && !handshakeSyn.ack && !handshakeSyn.fin) {
       printOutput(handshakeSyn, false);
       senderIp = handshakeSynPacket.getAddress();
       senderPort = handshakeSynPacket.getPort();
@@ -65,7 +65,7 @@ public class TCPreceiver extends TCPsocket {
       try {
         // Send 2nd Syn+Ack Packet
         TCPsegment handshakeSynAck =
-            TCPsegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.SYNACK);
+            TCPsegment.getConnectionSegment(bsn, nextByteExpected, HandshakeType.SYNACK);
         sendPacket(handshakeSynAck, senderIp, senderPort);
         bsn++;
 
@@ -73,15 +73,15 @@ public class TCPreceiver extends TCPsocket {
         do {
           // we might still be receiving leftover SYN retransmits
           try {
-            socket.setSoTimeout(INITIAL_TIMEOUT_MS);
+            socket.setSoTimeout(5000);
             firstReceivedAck = handlePacket();
           } catch (SegmentChecksumMismatchException e) {
             e.printStackTrace();
             continue;
           }
-        } while (firstReceivedAck.isSyn);
+        } while (firstReceivedAck.syn);
 
-        if (firstReceivedAck.isAck && !firstReceivedAck.isFin && !firstReceivedAck.isSyn) {
+        if (firstReceivedAck.ack && !firstReceivedAck.fin && !firstReceivedAck.syn) {
           isFirstAckReceived = true;
         } else {
           throw new UnexpectedFlagException();
@@ -113,7 +113,7 @@ public class TCPreceiver extends TCPsocket {
       PriorityQueue<TCPsegment> sendBuffer = new PriorityQueue<>(sws);
       HashSet<Integer> bsnBufferSet = new HashSet<>();
 
-      if (firstReceivedAck != null && firstReceivedAck.isAck && firstReceivedAck.dataLength > 0) {
+      if (firstReceivedAck != null && firstReceivedAck.ack && firstReceivedAck.dataLength > 0) {
         // if handshake ACK is lost, then the first ACK might contain data.
         sendBuffer.add(firstReceivedAck);
         bsnBufferSet.add(firstReceivedAck.byteSequenceNum);
@@ -121,7 +121,7 @@ public class TCPreceiver extends TCPsocket {
 
       while (isOpen) {
         // Receive data
-        // this.socket.setSoTimeout(INITIAL_TIMEOUT_MS);
+        // this.socket.setSoTimeout(5000);
         TCPsegment data;
         try {
           data = handlePacket();
@@ -142,7 +142,7 @@ public class TCPreceiver extends TCPsocket {
           // Discard out-of-order packets (outside sliding window size)
           System.err.println("Rcv - discard out-of-order packet!!!");
           TCPsegment ackSegment =
-              TCPsegment.createAckSegment(bsn, nextByteExpected, mostRecentTimestamp);
+              TCPsegment.getAckSegment(bsn, nextByteExpected, mostRecentTimestamp);
           sendPacket(ackSegment, senderIp, senderPort);
           numDiscardPackets++;
           continue; // wait for more packets
@@ -152,7 +152,7 @@ public class TCPreceiver extends TCPsocket {
           // a ton of extra traffic
           // System.err.println("Rcv - discard out-of-order packet!!!");
           TCPsegment ackSegment =
-              TCPsegment.createAckSegment(bsn, nextByteExpected, mostRecentTimestamp);
+              TCPsegment.getAckSegment(bsn, nextByteExpected, mostRecentTimestamp);
           sendPacket(ackSegment, senderIp, senderPort);
           numDiscardPackets++;
           continue;
@@ -172,9 +172,9 @@ public class TCPreceiver extends TCPsocket {
             // check if sendBuffer has next expected packet
             if (minSegment.byteSequenceNum == nextByteExpected) {
               // Terminate Connection
-              if (!minSegment.isAck || minSegment.getDataLength() <= 0) {
+              if (!minSegment.ack || minSegment.getDataLength() <= 0) {
                 // receive non-data packeton close
-                if (minSegment.isFin) {
+                if (minSegment.fin) {
                   outStream.close();
                   closeConnection(mostRecentTimestamp);
                   sendBuffer.remove(minSegment);
@@ -190,7 +190,7 @@ public class TCPreceiver extends TCPsocket {
                 nextByteExpected += minSegment.getDataLength();
                 lastByteReceived += minSegment.getDataLength();
                 TCPsegment ackSegment =
-                    TCPsegment.createAckSegment(bsn, nextByteExpected, mostRecentTimestamp);
+                    TCPsegment.getAckSegment(bsn, nextByteExpected, mostRecentTimestamp);
                 sendPacket(ackSegment, senderIp, senderPort);
 
                 bsnBufferSet.remove(minSegment.byteSequenceNum);
@@ -199,7 +199,7 @@ public class TCPreceiver extends TCPsocket {
             } else {
               // not next expected packet; send duplicate ACK
               TCPsegment ackSegment =
-                  TCPsegment.createAckSegment(bsn, nextByteExpected, mostRecentTimestamp);
+                  TCPsegment.getAckSegment(bsn, nextByteExpected, mostRecentTimestamp);
               sendPacket(ackSegment, senderIp, senderPort);
               break;
             }
@@ -222,12 +222,12 @@ public class TCPreceiver extends TCPsocket {
     while (!isLastAckReceived) {
 
       TCPsegment returnFinAckSegment =
-          TCPsegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.FINACK);
+          TCPsegment.getConnectionSegment(bsn, nextByteExpected, HandshakeType.FINACK);
       sendPacket(returnFinAckSegment, senderIp, senderPort);
       bsn++;
 
       try {
-        this.socket.setSoTimeout(INITIAL_TIMEOUT_MS);
+        this.socket.setSoTimeout(5000);
         TCPsegment lastAckSegment;
         try {
           lastAckSegment = handlePacket();
@@ -236,9 +236,9 @@ public class TCPreceiver extends TCPsocket {
           continue;
         }
 
-        if (lastAckSegment.isAck) {
+        if (lastAckSegment.ack) {
           isLastAckReceived = true;
-        } else if (lastAckSegment.isFin) {
+        } else if (lastAckSegment.fin) {
           // discard Fin retransmission
           bsn--;
           continue;

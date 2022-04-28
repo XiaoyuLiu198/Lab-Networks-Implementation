@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 
 public class CommandOpen extends Command 
 {
-	protected String mVirtualHostId;
+	public String mVirtualHostId;
 	
 	public CommandOpen()
 	{
@@ -12,7 +12,7 @@ public class CommandOpen extends Command
 		this.mLen = this.getSize();
 	}
 	
-	protected CommandOpen deserialize(ByteBuffer buf)
+	public CommandOpen deserialize(ByteBuffer buf)
 	{
 		super.deserialize(buf);
 		byte[] tmpBytes = new byte[Command.ID_SIZE];
@@ -22,7 +22,7 @@ public class CommandOpen extends Command
 		return this;
 	}
 	
-	protected byte[] serialize()
+	public byte[] serialize()
 	{
 		byte[] data = new byte[this.getSize()];
         ByteBuffer bb = ByteBuffer.wrap(data);
@@ -37,6 +37,6 @@ public class CommandOpen extends Command
         return data;
 	}
 	
-	protected int getSize()
+	public int getSize()
 	{ return super.getSize() + Command.ID_SIZE; }
 }

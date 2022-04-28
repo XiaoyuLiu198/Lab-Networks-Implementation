@@ -24,16 +24,16 @@ import java.nio.ByteBuffer;
  * @author shudong.zhou@bigswitch.com
  */
 public class TCP extends BasePacket {
-    protected short sourcePort;
-    protected short destinationPort;
-    protected int sequence;
-    protected int acknowledge;
-    protected byte dataOffset;
-    protected short flags;
-    protected short windowSize;
-    protected short checksum;
-    protected short urgentPointer;
-    protected byte[] options;
+    public short sourcePort;
+    public short destinationPort;
+    public int sequence;
+    public int acknowledge;
+    public byte dataOffset;
+    public short flags;
+    public short windowSize;
+    public short checksum;
+    public short urgentPointer;
+    public byte[] options;
 
     /**
      * @return the sourcePort

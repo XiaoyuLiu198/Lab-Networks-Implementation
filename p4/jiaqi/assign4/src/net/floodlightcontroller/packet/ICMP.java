@@ -26,9 +26,9 @@ import java.nio.ByteBuffer;
 public class ICMP extends BasePacket {
     public static final byte TYPE_ECHO_REQUEST = 0x8;
 
-    protected byte icmpType;
-    protected byte icmpCode;
-    protected short checksum;
+    public byte icmpType;
+    public byte icmpCode;
+    public short checksum;
 
     /**
      * @return the icmpType

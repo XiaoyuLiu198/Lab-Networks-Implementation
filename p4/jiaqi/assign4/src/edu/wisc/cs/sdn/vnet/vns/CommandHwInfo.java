@@ -8,12 +8,12 @@ public class CommandHwInfo extends Command
 {
 	public static final int MAX_HW_ENTRIES = 256;
 	
-	protected List<CommandHwEntry> mHwInfo;
+	public List<CommandHwEntry> mHwInfo;
 	
 	public CommandHwInfo()
 	{ super(Command.VNS_HW_INFO); }
 	
-	protected CommandHwInfo deserialize(ByteBuffer buf)
+	public CommandHwInfo deserialize(ByteBuffer buf)
 	{
 		super.deserialize(buf);
 		

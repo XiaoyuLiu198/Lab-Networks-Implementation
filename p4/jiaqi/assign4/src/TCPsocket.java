@@ -4,38 +4,30 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.text.DecimalFormat;
 
-/**
- * @author Garrett
- *
- */
 public class TCPsocket {
-  public static final int INITIAL_TIMEOUT_MS = 5000; // initial timeout in ms
-  public static final float ALPHA_RTTFACTOR = 0.875F;
-  public static final float BETA_DEVFACTOR = 0.75F;
   public static final DecimalFormat threePlaces = new DecimalFormat("0.000");
   public static final short MAX_RETRANSMITS = 16;
 
-  protected int senderSourcePort;
-  protected int receiverPort;
-  protected InetAddress receiverIp;
-  protected String filename;
-  protected int mtu;
-  protected int sws;
-  protected int bsn;
-  protected int nextByteExpected;
-  protected DatagramSocket socket;
-  protected long effRTT;
-  protected long effDev;
-  protected long timeout;
+  public int senderSourcePort;
+  public int receiverPort;
+  public InetAddress receiverIp;
+  public String filename;
+  public int mtu;
+  public int sws;
+  public int bsn;
+  public int nextByteExpected;
+  public DatagramSocket socket;
+  public long ertt;
+  public long edev;
+  public long timeout;
 
-  // Final stat counters
-  protected int numPacketsSent;
-  protected int numPacketsReceived;
-  protected int lastByteSent;
-  protected int lastByteReceived;
-  protected int numDiscardPackets;
-  protected int numRetransmits;
-  protected int numDupAcks;
+  public int numPacketsSent;
+  public int numPacketsReceived;
+  public int lastByteSent;
+  public int lastByteReceived;
+  public int numDiscardPackets;
+  public int numRetransmits;
+  public int numDupAcks;
 
   public int getSenderSourcePort() {
     return senderSourcePort;
@@ -94,40 +86,37 @@ public class TCPsocket {
   }
 
   public TCPsegment handlePacket() throws IOException, SegmentChecksumMismatchException {
-    // Receive packet
-    byte[] bytes = new byte[mtu + TCPsegment.HEADER_LENGTH_BYTES];
-    DatagramPacket packet = new DatagramPacket(bytes, mtu + TCPsegment.HEADER_LENGTH_BYTES);
+
+    byte[] bytes = new byte[mtu + 24];
+    DatagramPacket packet = new DatagramPacket(bytes, mtu + 24);
     this.socket.receive(packet);
     bytes = packet.getData();
     TCPsegment segment = new TCPsegment();
     segment = segment.deserialize(bytes);
 
-    // Verify checksum
     short origChk = segment.getChecksum();
     segment.resetChecksum();
     segment.serialize();
     short calcChk = segment.getChecksum();
     if (origChk != calcChk) {
-      // discard packet if checksum doesn't match
+
       throw new SegmentChecksumMismatchException("Error: Checksum does not match!");
     }
 
-    // Recalculate timeout if ACK
-    if (segment.isAck && segment.dataLength == 0) {
+    if (segment.ack && segment.dataLength == 0) {
       if (segment.byteSequenceNum == 0) {
-        this.effRTT = (long) (System.nanoTime() - segment.timestamp);
-        this.effDev = 0;
-        this.timeout = 2 * effRTT;
+        this.ertt = (long) (System.nanoTime() - segment.timestamp);
+        this.edev = 0;
+        this.timeout = 2 * ertt;
       } else {
-        long sampRTT = (long) (System.nanoTime() - segment.timestamp);
-        long sampDev = Math.abs(sampRTT - effRTT);
-        this.effRTT = (long) (ALPHA_RTTFACTOR * effRTT + (1 - ALPHA_RTTFACTOR) * sampRTT);
-        this.effDev = (long) (BETA_DEVFACTOR * effDev + (1 - BETA_DEVFACTOR) * sampDev);
-        this.timeout = this.effRTT + 4 * this.effDev;
+        long srtt = (long) (System.nanoTime() - segment.timestamp);
+        long sdev = Math.abs(srtt - ertt);
+        this.ertt = (long) (0.875f * ertt + (1 - 0.875f) * srtt);
+        this.edev = (long) (0.75f * edev + (1 - 0.75f) * sdev);
+        this.timeout = this.ertt + 4 * this.edev;
       }
     }
 
-    // Final stat counters
     this.numPacketsReceived++;
 
     printOutput(segment, false);
@@ -142,9 +131,9 @@ public class TCPsocket {
       System.out.print("rcv ");
     }
     System.out.print(segment.getTimestamp());
-    System.out.print(segment.isSyn ? " S" : " -");
-    System.out.print(segment.isAck ? " A" : " -");
-    System.out.print(segment.isFin ? " F" : " -");
+    System.out.print(segment.syn ? " S" : " -");
+    System.out.print(segment.ack ? " A" : " -");
+    System.out.print(segment.fin ? " F" : " -");
     System.out.print((segment.getDataLength() > 0) ? " D" : " -");
     System.out.print(" " + segment.byteSequenceNum);
     System.out.print(" " + segment.getDataLength());

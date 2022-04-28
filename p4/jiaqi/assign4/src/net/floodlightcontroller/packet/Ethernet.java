@@ -46,12 +46,12 @@ public class Ethernet extends BasePacket {
         etherTypeClassMap.put(TYPE_IPv4, IPv4.class);
     }
 
-    protected MACAddress destinationMACAddress;
-    protected MACAddress sourceMACAddress;
-    protected byte priorityCode;
-    protected short vlanID;
-    protected short etherType;
-    protected boolean pad = false;
+    public MACAddress destinationMACAddress;
+    public MACAddress sourceMACAddress;
+    public byte priorityCode;
+    public short vlanID;
+    public short etherType;
+    public boolean pad = false;
 
     /**
      * By default, set Ethernet to untagged

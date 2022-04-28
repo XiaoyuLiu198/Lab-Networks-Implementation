@@ -13,9 +13,9 @@ public class RIPv2 extends BasePacket
     public static final byte COMMAND_REQUEST = 1;
     public static final byte COMMAND_RESPONSE = 2;
 
-	protected byte command;
-	protected byte version;
-	protected List<RIPv2Entry> entries;
+	public byte command;
+	public byte version;
+	public List<RIPv2Entry> entries;
 
 	public RIPv2()
 	{ 

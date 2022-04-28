@@ -36,10 +36,10 @@ public class UDP extends BasePacket {
         UDP.decodeMap.put(RIP_PORT, RIPv2.class);
     }
 
-    protected short sourcePort;
-    protected short destinationPort;
-    protected short length;
-    protected short checksum;
+    public short sourcePort;
+    public short destinationPort;
+    public short length;
+    public short checksum;
 
     /**
      * @return the sourcePort

@@ -9,12 +9,12 @@ public class RIPv2Entry
 {
     public static final short ADDRESS_FAMILY_IPv4 = 2;
 
-    protected short addressFamily;
-    protected short routeTag;
-	protected int address;
-	protected int subnetMask;
-	protected int nextHopAddress;
-	protected int metric;
+    public short addressFamily;
+    public short routeTag;
+	public int address;
+	public int subnetMask;
+	public int nextHopAddress;
+	public int metric;
 
     public RIPv2Entry()
     { }

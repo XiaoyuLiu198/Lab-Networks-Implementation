@@ -4,12 +4,12 @@ import java.nio.ByteBuffer;
 
 public class CommandClose extends Command
 {
-	protected String mErrorMessage;
+	public String mErrorMessage;
 	
 	public CommandClose()
 	{ super(Command.VNS_CLOSE); }
 	
-	protected CommandClose deserialize(ByteBuffer buf)
+	public CommandClose deserialize(ByteBuffer buf)
 	{
 		super.deserialize(buf);
 				

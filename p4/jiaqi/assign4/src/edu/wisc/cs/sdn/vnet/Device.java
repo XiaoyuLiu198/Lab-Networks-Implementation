@@ -16,7 +16,7 @@ public abstract class Device
 	private String host;
 	
 	/** List of the device's interfaces; maps interface name's to interfaces */
-	protected Map<String,Iface> interfaces;
+	public Map<String,Iface> interfaces;
 	
 	/** PCAP dump file for logging all packets sent/received by the device;
 	 *  null if packets should not be logged */

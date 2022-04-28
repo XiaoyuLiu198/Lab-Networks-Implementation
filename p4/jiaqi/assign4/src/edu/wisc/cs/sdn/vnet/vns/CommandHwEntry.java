@@ -9,10 +9,10 @@ public class CommandHwEntry
 	public static final int HW_ETH_IP = 4;
 	public static final int HW_MASK = 8;
 	
-	protected int mKey;
-	protected byte [] value;
+	public int mKey;
+	public byte [] value;
 	
-	protected CommandHwEntry deserialize(ByteBuffer buf)
+	public CommandHwEntry deserialize(ByteBuffer buf)
 	{
 		this.mKey = buf.getInt();
 		

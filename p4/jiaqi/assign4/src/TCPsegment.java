@@ -2,45 +2,44 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class TCPsegment implements Comparable<TCPsegment> {
-  static final int HEADER_LENGTH_BYTES = 24;
 
-  protected int byteSequenceNum;
-  protected int ackNum;
-  protected long timestamp;
-  protected boolean isSyn;
-  protected boolean isFin;
-  protected boolean isAck;
-  protected short checksum;
-  protected byte[] payloadData;
-  protected int dataLength;
+  public int byteSequenceNum;
+  public int ackNum;
+  public long timestamp;
+  public boolean syn;
+  public boolean fin;
+  public boolean ack;
+  public short checksum;
+  public byte[] payloadData;
+  public int dataLength;
 
   public TCPsegment() {
     this(0, 0, System.nanoTime(), false, false, false, new byte[0], 0);
   }
 
-  public TCPsegment(int bsNum, int ackNum, boolean isSyn, boolean isFin, boolean isAck,
+  public TCPsegment(int bsNum, int ackNum, boolean syn, boolean fin, boolean ack,
       byte[] payloadData, int dataLength) {
-    this(bsNum, ackNum, System.nanoTime(), isSyn, isFin, isAck, payloadData, dataLength);
+    this(bsNum, ackNum, System.nanoTime(), syn, fin, ack, payloadData, dataLength);
   }
 
-  public TCPsegment(int bsNum, int ackNum, long timestamp, boolean isSyn, boolean isFin, boolean isAck,
+  public TCPsegment(int bsNum, int ackNum, long timestamp, boolean syn, boolean fin, boolean ack,
       byte[] payloadData, int dataLength) {
     this.byteSequenceNum = bsNum;
     this.ackNum = ackNum;
     this.timestamp = timestamp;
-    this.isSyn = isSyn;
-    this.isFin = isFin;
-    this.isAck = isAck;
+    this.syn = syn;
+    this.fin = fin;
+    this.ack = ack;
     this.checksum = 0;
     this.payloadData = payloadData;
     this.dataLength = dataLength;
   }
 
-  public static TCPsegment createDataSegment(int bsNum, int ackNum, byte[] payloadData) {
+  public static TCPsegment getDataSegment(int bsNum, int ackNum, byte[] payloadData) {
     return new TCPsegment(bsNum, ackNum, false, false, true, payloadData, payloadData.length);
   }
 
-  public static TCPsegment createHandshakeSegment(int bsNum, int ackNum, HandshakeType type) {
+  public static TCPsegment getConnectionSegment(int bsNum, int ackNum, HandshakeType type) {
     if (type == HandshakeType.SYN) {
       return new TCPsegment(bsNum, ackNum, true, false, false, new byte[0], 0);
     } else if (type == HandshakeType.SYNACK) {
@@ -56,18 +55,18 @@ public class TCPsegment implements Comparable<TCPsegment> {
     }
   }
 
-  public static TCPsegment createAckSegment(int bsNum, int ackNum, long timestamp) {
+  public static TCPsegment getAckSegment(int bsNum, int ackNum, long timestamp) {
     return new TCPsegment(bsNum, ackNum, timestamp, false, false, true, new byte[0], 0);
   }
 
   public byte[] serialize() {
-    int totalLength;
+    int length;
     if (payloadData == null) {
-      totalLength = HEADER_LENGTH_BYTES;
+      length = 24;
     } else {
-      totalLength = payloadData.length + HEADER_LENGTH_BYTES;
+      length = payloadData.length + 24;
     }
-    byte[] allSegmentData = new byte[totalLength];
+    byte[] allSegmentData = new byte[length];
 
     ByteBuffer bb = ByteBuffer.wrap(allSegmentData);
     bb.putInt(byteSequenceNum);
@@ -76,13 +75,13 @@ public class TCPsegment implements Comparable<TCPsegment> {
 
     int lengthAndFlags = 0b0;
     lengthAndFlags = dataLength << 3;
-    if (isSyn) {
+    if (syn) {
       lengthAndFlags += (0b1 << 2);
     }
-    if (isFin) {
+    if (fin) {
       lengthAndFlags += (0b1 << 1);
     }
-    if (isAck) {
+    if (ack) {
       lengthAndFlags += (0b1 << 0);
     }
     bb.putInt(lengthAndFlags);
@@ -123,17 +122,17 @@ public class TCPsegment implements Comparable<TCPsegment> {
 
     int lengthAndFlags = bb.getInt();
     this.dataLength = lengthAndFlags >> 3;
-    this.isSyn = false;
-    this.isAck = false;
-    this.isFin = false;
+    this.syn = false;
+    this.ack = false;
+    this.fin = false;
     if (((lengthAndFlags >> 2) & 0b1) == 1) {
-      this.isSyn = true;
+      this.syn = true;
     }
     if (((lengthAndFlags >> 1) & 0b1) == 1) {
-      this.isFin = true;
+      this.fin = true;
     }
     if ((lengthAndFlags & 0b1) == 1) {
-      this.isAck = true;
+      this.ack = true;
     }
     bb.getShort();
     this.checksum = bb.getShort();
@@ -175,28 +174,28 @@ public class TCPsegment implements Comparable<TCPsegment> {
     this.dataLength = dataLength;
   }
 
-  public boolean isSyn() {
-    return isSyn;
+  public boolean syn() {
+    return syn;
   }
 
-  public void setSyn(boolean isSyn) {
-    this.isSyn = isSyn;
+  public void setSyn(boolean syn) {
+    this.syn = syn;
   }
 
-  public boolean isAck() {
-    return isAck;
+  public boolean ack() {
+    return ack;
   }
 
-  public void setAck(boolean isAck) {
-    this.isAck = isAck;
+  public void setAck(boolean ack) {
+    this.ack = ack;
   }
 
-  public boolean isFin() {
-    return isFin;
+  public boolean fin() {
+    return fin;
   }
 
-  public void setFin(boolean isFin) {
-    this.isFin = isFin;
+  public void setFin(boolean fin) {
+    this.fin = fin;
   }
 
   public short getChecksum() {

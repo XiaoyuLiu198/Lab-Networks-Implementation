@@ -43,21 +43,21 @@ public class IPv4 extends BasePacket {
         protocolClassMap.put(PROTOCOL_UDP, UDP.class);
     }
 
-    protected byte version;
-    protected byte headerLength;
-    protected byte diffServ;
-    protected short totalLength;
-    protected short identification;
-    protected byte flags;
-    protected short fragmentOffset;
-    protected byte ttl;
-    protected byte protocol;
-    protected short checksum;
-    protected int sourceAddress;
-    protected int destinationAddress;
-    protected byte[] options;
+    public byte version;
+    public byte headerLength;
+    public byte diffServ;
+    public short totalLength;
+    public short identification;
+    public byte flags;
+    public short fragmentOffset;
+    public byte ttl;
+    public byte protocol;
+    public short checksum;
+    public int sourceAddress;
+    public int destinationAddress;
+    public byte[] options;
 
-    protected boolean isTruncated;
+    public boolean isTruncated;
 
     /**
      * Default constructor that sets the version to 4.

@@ -23,8 +23,8 @@ package net.floodlightcontroller.packet;
 * @author David Erickson (daviderickson@cs.stanford.edu)
 */
 public abstract class BasePacket implements IPacket {
-    protected IPacket parent;
-    protected IPacket payload;
+    public IPacket parent;
+    public IPacket payload;
 
     /**
      * @return the parent
