@@ -2,243 +2,156 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 enum ConnectionState {
-  SYN,
-  SYN_ACK,
-  ACK,
-  FIN,
-  FIN_ACK
+    SYN,
+    SYN_ACK,
+    ACK,
+    FIN,
+    FIN_ACK
 }
 
-public class TCPsegment implements Comparable<TCPsegment> {
+public class TCPsegment implements Comparable<TCPsegment>{
 
-  public int sequenceNum;
-  public int ackNum;
-  public boolean syn;
-  public boolean fin;
-  public boolean ack;
-  public byte[] data;
-  public int dataLength;
-  public short checksum;
-  public long time;
+    public boolean syn;
+    public boolean ack;
+    public boolean fin;
+    public int sequenceNum;
+    public int ackNum;
+    public byte[] data;
+    public int dataSize;
+    public short checksum;
+    public long time;
 
-  public TCPsegment() {
-    this(0, 0, System.nanoTime(), false, false, false, new byte[0], 0);
-  }
-
-  public TCPsegment(int sequenceNum, int ackNum, boolean syn, boolean fin, boolean ack,
-      byte[] data, int dataLength) {
-    this(sequenceNum, ackNum, System.nanoTime(), syn, fin, ack, data, dataLength);
-  }
-
-  public TCPsegment(int sequenceNum, int ackNum, long timestamp, boolean syn, boolean fin, boolean ack,
-      byte[] data, int dataLength) {
-    this.sequenceNum = sequenceNum;
-    this.ackNum = ackNum;
-    this.time = timestamp;
-    this.syn = syn;
-    this.fin = fin;
-    this.ack = ack;
-    this.checksum = 0;
-    this.data = data;
-    this.dataLength = dataLength;
-  }
-
-  public static TCPsegment getDataSegment(int sequenceNum, int ackNum, byte[] data) {
-    return new TCPsegment(sequenceNum, ackNum, false, false, true, data, data.length);
-  }
-
-  public static TCPsegment getConnectionSegment(int sequenceNum, int ackNum, ConnectionState state) {
-    switch (state) {
-      case SYN:
-        return new TCPsegment(sequenceNum, ackNum, true, false, false, new byte[0], 0);
-      case SYN_ACK:
-        return new TCPsegment(sequenceNum, ackNum, true, false, true, new byte[0], 0);
-      case ACK:
-        return new TCPsegment(sequenceNum, ackNum, false, false, true, new byte[0], 0);
-      case FIN:
-        return new TCPsegment(sequenceNum, ackNum, false, true, false, new byte[0], 0);
-      case FIN_ACK:
-        return new TCPsegment(sequenceNum, ackNum, false, true, true, new byte[0], 0);
-      default:
-        return null;
-    }
-    // if (state == ConnectionState.SYN) {
-    // return new TCPsegment(sequenceNum, ackNum, true, false, false, new byte[0],
-    // 0);
-    // } else if (state == ConnectionState.SYN_ACK) {
-    // return new TCPsegment(sequenceNum, ackNum, true, false, true, new byte[0],
-    // 0);
-    // } else if (state == ConnectionState.ACK) {
-    // return new TCPsegment(sequenceNum, ackNum, false, false, true, new byte[0],
-    // 0);
-    // } else if (state == ConnectionState.FIN) {
-    // return new TCPsegment(sequenceNum, ackNum, false, true, false, new byte[0],
-    // 0);
-    // } else if (state == ConnectionState.FIN_ACK) {
-    // return new TCPsegment(sequenceNum, ackNum, false, true, true, new byte[0],
-    // 0);
-    // } else {
-    // return null;
-    // }
-  }
-
-  public static TCPsegment getAckSegment(int sequenceNum, int ackNum, long timestamp) {
-    return new TCPsegment(sequenceNum, ackNum, timestamp, false, false, true, new byte[0], 0);
-  }
-
-  public byte[] serialize() {
-    int length = (data == null) ? 24 : data.length + 24;
-    byte[] segmentData = new byte[length];
-
-    ByteBuffer bb = ByteBuffer.wrap(segmentData);
-    bb.putInt(sequenceNum);
-    bb.putInt(ackNum);
-    bb.putLong(time);
-
-    int flags = 0b0;
-    flags = dataLength << 3;
-    if (syn) {
-      flags += (0b1 << 2);
-    }
-    if (fin) {
-      flags += (0b1 << 1);
-    }
-    if (ack) {
-      flags += (0b1 << 0);
-    }
-    bb.putInt(flags);
-
-    bb.putInt(0x0000);
-
-    if (dataLength != 0) {
-      bb.put(data);
+    public TCPsegment(boolean syn, boolean ack, boolean fin, int sequenceNum, int ackNum, byte[] data, int dataSize) {
+        this.syn = syn;
+        this.ack = ack;
+        this.fin = fin;
+        this.sequenceNum = sequenceNum;
+        this.ackNum = ackNum;
+        this.data = data;
+        this.dataSize = dataSize;
+        this.time = System.nanoTime();
     }
 
-    bb.rewind();
-    int temp = 0;
-    for (int i = 0; i < segmentData.length / 2; i++) {
-      temp += bb.getShort();
+    public TCPsegment(boolean syn, boolean ack, boolean fin, int sequenceNum, int ackNum, byte[] data, int dataSize, long time) {
+        this.syn = syn;
+        this.ack = ack;
+        this.fin = fin;
+        this.sequenceNum = sequenceNum;
+        this.ackNum = ackNum;
+        this.data = data;
+        this.dataSize = dataSize;
+        this.checksum = 0;
+        this.time = time;
     }
-    if (segmentData.length % 2 == 1) {
-      temp += (bb.get() & 0xff) << 8;
+    
+    public TCPsegment() {
+        this.syn = false;
+        this.ack = false;
+        this.fin = false;
+        this.sequenceNum = 0;
+        this.ackNum = 0;
+        this.data = new byte[0];
+        this.dataSize = 0;
+        this.checksum = 0;
+        this.time = System.nanoTime();
     }
 
-    while (temp > 0xffff) {
-      // int carryoverBits = temp >> 16;
-      // int lastSixteenBits = temp - ((temp >> 16) << 16);
-      temp = (temp - ((temp >> 16) << 16)) + (temp >> 16);
+    @Override
+    public int compareTo(TCPsegment seg) {
+        return Integer.compare(this.sequenceNum, seg.sequenceNum);
     }
-    this.checksum = (short) (~temp & 0xffff);
 
-    bb.putShort(22, this.checksum);
-
-    return segmentData;
-  }
-
-  public TCPsegment deserialize(byte[] data) {
-    ByteBuffer bb = ByteBuffer.wrap(data);
-
-    this.sequenceNum = bb.getInt();
-    this.ackNum = bb.getInt();
-    this.time = bb.getLong();
-
-    int flags = bb.getInt();
-    this.dataLength = flags >> 3;
-    this.syn = false;
-    this.ack = false;
-    this.fin = false;
-    if (((flags >> 2) & 0b1) == 1) {
-      this.syn = true;
+    public static TCPsegment getConnectionSegment(int sequenceNum, int ackNum, ConnectionState state) {
+        switch(state) {
+            case SYN:
+                return new TCPsegment(true, false, false, sequenceNum, ackNum, new byte[0], 0);
+            case SYN_ACK:
+                return new TCPsegment(true, true, false, sequenceNum, ackNum, new byte[0], 0);
+            case ACK:
+                return new TCPsegment(false, true, false, sequenceNum, ackNum, new byte[0], 0);
+            case FIN:
+                return new TCPsegment(false, false, true, sequenceNum, ackNum, new byte[0], 0);
+            case FIN_ACK:
+                return new TCPsegment(false, true, true, sequenceNum, ackNum, new byte[0], 0);
+            default:
+                return null;
+        }
     }
-    if (((flags >> 1) & 0b1) == 1) {
-      this.fin = true;
+
+    public static TCPsegment getAckSegment(int sequenceNum, int ackNum, long time) {
+        return new TCPsegment(false, true, false, sequenceNum, ackNum, new byte[0], 0, time);
     }
-    if ((flags & 0b1) == 1) {
-      this.ack = true;
+
+    public static TCPsegment getDataSegment(int sequenceNum, int ackNum, byte[] data) {
+        return new TCPsegment(false, true, false, sequenceNum, ackNum, data, data.length);
     }
-    bb.getShort();
-    this.checksum = bb.getShort();
+    
+    public byte[] serialize() {
+        int size = this.data.length;  // total segment size
+        if (this.data == null) {
+            size = 24;
+        } else {
+            size = this.data.length + 24;
+        }
 
-    this.data = Arrays.copyOfRange(data, bb.position(), dataLength + bb.position());
+        byte[] segment = new byte[size];
+        ByteBuffer bb = ByteBuffer.wrap(segment);
+        bb.putInt(sequenceNum);
+        bb.putInt(ackNum);
+        bb.putLong(this.time);
 
-    return this;
-  }
+        // set length and flags
+        int flags = 4 * (this.syn ? 1 : 0) + 2 * (this.ack ? 1 : 0) + (this.fin ? 1 : 0); 
+        bb.putInt((this.dataSize << 3) + flags);  
+        
+        bb.putInt(0);  // set checksum
 
-  public int getByteSequenceNum() {
-    return sequenceNum;
-  }
+        if (this.dataSize != 0) {
+            bb.put(this.data);
+        }
 
-  public void setByteSequenceNum(int byteSequenceNum) {
-    this.sequenceNum = byteSequenceNum;
-  }
+        bb.rewind();
 
-  public int getAckNum() {
-    return ackNum;
-  }
+        // calculate checksum
+        int temp = 0;
+        for (int i = 0; i < segment.length/2 ; i++) {
+            temp += bb.getShort();
+        }
+        if (segment.length % 2 == 1) {
+            temp += (bb.get() & 0xFF) << 8;
+        }
+        while (temp > 0xFFFF) {
+            temp = (temp >> 16) + (temp - ((temp >> 16) << 16));
+        }
 
-  public void setAckNum(int ackNum) {
-    this.ackNum = ackNum;
-  }
+        this.checksum = (short) (0xFFFF & ~temp);
+        bb.putShort(22, this.checksum);
+        
+        return segment;
+    }
 
-  public long getTimestamp() {
-    return time;
-  }
+    public TCPsegment deserialize(byte[] data) {
+        ByteBuffer bb = ByteBuffer.wrap(data);
+        this.sequenceNum = bb.getInt();
+        this.ackNum = bb.getInt();
+        this.time = bb.getLong();
 
-  public void setTimestamp(long timestamp) {
-    this.time = timestamp;
-  }
+        int flags = bb.getInt();
+        this.dataSize = flags >> 3;
+        this.syn = ((flags & 4) == 4);
+        this.ack = ((flags & 2) == 2);
+        this.fin = ((flags & 1) == 1);
 
-  public int getDataLength() {
-    return dataLength;
-  }
+        bb.getShort();
+        this.checksum = bb.getShort();
+        this.data = Arrays.copyOfRange(data, bb.position(), bb.position()+this.dataSize);
+        return this;
+    }
 
-  public void setLength(int dataLength) {
-    this.dataLength = dataLength;
-  }
-
-  public boolean syn() {
-    return syn;
-  }
-
-  public void setSyn(boolean syn) {
-    this.syn = syn;
-  }
-
-  public boolean ack() {
-    return ack;
-  }
-
-  public void setAck(boolean ack) {
-    this.ack = ack;
-  }
-
-  public boolean fin() {
-    return fin;
-  }
-
-  public void setFin(boolean fin) {
-    this.fin = fin;
-  }
-
-  public short getChecksum() {
-    return checksum;
-  }
-
-  public void setChecksum(short checksum) {
-    this.checksum = checksum;
-  }
-
-  public void resetChecksum() {
-    this.checksum = 0;
-  }
-
-  public byte[] getPayload() {
-    return this.data;
-  }
-
-  @Override
-  public int compareTo(TCPsegment seg) {
-    return Integer.compare(this.sequenceNum, seg.sequenceNum);
-  }
-
+    public short getChecksum() {
+        return this.checksum;
+    }
+    public void resetChecksum() {
+        this.checksum = 0;
+    }
 }
