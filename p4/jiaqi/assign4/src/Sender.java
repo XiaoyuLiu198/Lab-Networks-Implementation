@@ -8,13 +8,13 @@ import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
-public class TCPsender extends TCPsocket {
+public class Sender extends TCPEndHost {
 
-  public TCPsender(int senderSourcePort, InetAddress receiverIp, int receiverPort, String filename,
+  public Sender(int senderSourcePort, InetAddress receiverIp, int receiverPort, String filename,
       int mtu, int sws) {
     this.senderSourcePort = senderSourcePort;
     this.receiverIp = receiverIp;
-    this.port = receiverPort;
+    this.receiverPort = receiverPort;
     this.filename = filename;
     this.mtu = mtu;
     this.sws = sws;
@@ -24,14 +24,18 @@ public class TCPsender extends TCPsocket {
     this.socket = new DatagramSocket(senderSourcePort);
     this.socket.setSoTimeout(INITIAL_TIMEOUT_MS);
 
+    // Send First Syn Packet
+    // piazza@395
     boolean isSynAckReceived = false;
     while (!isSynAckReceived) {
-      TCPsegment handshakeFirstSyn = TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.SYN);
-      sendPacket(handshakeFirstSyn, receiverIp, port);
+      GBNSegment handshakeFirstSyn =
+          GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.SYN);
+      sendPacket(handshakeFirstSyn, receiverIp, receiverPort);
       bsn++;
 
+      // // Receive 2nd Syn+Ack Packet
       try {
-        TCPsegment handshakeSecondSynAck;
+        GBNSegment handshakeSecondSynAck;
         try {
           handshakeSecondSynAck = handlePacket();
         } catch (SegmentChecksumMismatchException e) {
@@ -39,12 +43,14 @@ public class TCPsender extends TCPsocket {
           continue;
         }
 
-        if (handshakeSecondSynAck.syn && handshakeSecondSynAck.ack) {
+        if (handshakeSecondSynAck.isSyn && handshakeSecondSynAck.isAck) {
           nextByteExpected++;
           isSynAckReceived = true;
 
-          TCPsegment handshakeThirdAck = TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.ACK);
-          sendPacket(handshakeThirdAck, receiverIp, port);
+          // Send 3rd Ack Packet
+          GBNSegment handshakeThirdAck =
+              GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.ACK);
+          sendPacket(handshakeThirdAck, receiverIp, receiverPort);
         } else {
           this.numRetransmits++;
           if (this.numRetransmits >= (MAX_RETRANSMITS + 1)) {
@@ -66,11 +72,12 @@ public class TCPsender extends TCPsocket {
   }
 
   public void sendData() throws MaxRetransmitException {
-
+    // Data Transfer
     try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(filename))) {
       DataInputStream inputStream = new DataInputStream(in);
-      byte[] sendBuffer = new byte[mtu * sws];
+      byte[] sendBuffer = new byte[mtu * sws]; // right now, buffer is the same size as the sws
 
+      // Initial filling up send buffer
       int lastByteAcked = 0;
       int lastByteWritten = 0;
       short currRetransmit = 0;
@@ -78,18 +85,18 @@ public class TCPsender extends TCPsocket {
       int currDupAck = 0;
 
       inputStream.mark(mtu * sws);
-
+      // fill up entire sendbuffer, which is currently = sws
       while ((byteReadCount = inputStream.read(sendBuffer, 0, mtu * sws)) != -1) {
         lastByteWritten += byteReadCount;
-
+        // Send entire buffer (currently = sws)
         for (int j = 0; j < (byteReadCount / mtu) + 1; j++) {
           byte[] onePayload;
           int payloadLength;
-          if (j == byteReadCount / mtu) {
+          if (j == byteReadCount / mtu) { // last payload
             payloadLength = byteReadCount % mtu;
             if (payloadLength != 0) {
               payloadLength = byteReadCount % mtu;
-            } else {
+            } else { // last payload is 0
               break;
             }
           } else {
@@ -98,15 +105,16 @@ public class TCPsender extends TCPsocket {
           onePayload = new byte[payloadLength];
           onePayload = Arrays.copyOfRange(sendBuffer, j * mtu, (j * mtu) + payloadLength);
 
-          TCPsegment dataSegment = TCPsegment.getDataSegment(bsn, nextByteExpected, onePayload);
-          sendPacket(dataSegment, receiverIp, port);
-          this.lastByteSent += payloadLength;
+          GBNSegment dataSegment = GBNSegment.createDataSegment(bsn, nextByteExpected, onePayload);
+          sendPacket(dataSegment, receiverIp, receiverPort);
+          this.lastByteSent += payloadLength; // lastbytesent is the same as lastbytewritten?
           bsn += payloadLength;
         }
 
+        // wait for ACKs
         while (lastByteAcked < this.lastByteSent) {
           try {
-            TCPsegment currAck;
+            GBNSegment currAck;
             try {
               currAck = handlePacket();
             } catch (SegmentChecksumMismatchException e) {
@@ -114,14 +122,16 @@ public class TCPsender extends TCPsocket {
               continue;
             }
 
-            if (!currAck.ack) {
+            if (!currAck.isAck) {
               throw new UnexpectedFlagException("Expected ACK!", currAck);
             }
             this.socket.setSoTimeout((int) (timeout / 1000000));
 
+            // piazza@393_f2 AckNum == NextByteExpected == LastByteAcked + 1
             int prevAck = lastByteAcked;
             lastByteAcked = currAck.ackNum - 1;
 
+            // Retransmit (three duplicate acks)
             if (prevAck == lastByteAcked) {
               currDupAck++;
               this.numDupAcks++;
@@ -129,11 +139,12 @@ public class TCPsender extends TCPsocket {
                 if (currRetransmit >= MAX_RETRANSMITS) {
                   throw new MaxRetransmitException("Max data retransmits!");
                 }
-
+                // Slide the window
+                // skip bytes from lastAck to mark (start of buffer in read loop)
                 slideWindow(inputStream, lastByteAcked, lastByteWritten, byteReadCount);
                 lastByteWritten = this.lastByteSent;
                 currRetransmit++;
-                break;
+                break; // exit wait ACK loop
               }
             } else {
               currDupAck = 0;
@@ -143,19 +154,20 @@ public class TCPsender extends TCPsocket {
             if (currRetransmit >= MAX_RETRANSMITS) {
               throw new MaxRetransmitException("Max data retransmits!");
             }
-
+            // Slide the window and retransmit after timeout
             slideWindow(inputStream, lastByteAcked, lastByteWritten, byteReadCount);
             lastByteWritten = this.lastByteSent;
             currRetransmit++;
-            break;
+            break; // exit wait ACK loop
           } catch (UnexpectedFlagException e) {
             e.printStackTrace();
             continue;
           }
-
+          // reset counter because we made it through the window without retrasmission
           currRetransmit = 0;
         }
 
+        // remove from buffer; mark position in file
         inputStream.mark(mtu * sws);
       }
     } catch (FileNotFoundException e) {
@@ -176,18 +188,20 @@ public class TCPsender extends TCPsocket {
 
   public void closeConnection()
       throws IOException, MaxRetransmitException, UnexpectedFlagException {
-
+    // Send FIN
     boolean isFinAckReceived = false;
     short currNumRetransmits = 0;
     while (!isFinAckReceived) {
-      TCPsegment finSegment = TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.FIN);
-      sendPacket(finSegment, receiverIp, port);
+      GBNSegment finSegment =
+          GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.FIN);
+      sendPacket(finSegment, receiverIp, receiverPort);
       bsn++;
 
+      // Receive FIN+ACK
       try {
-        TCPsegment returnFinAckSegment = null;
+        GBNSegment returnFinAckSegment = null;
         do {
-
+          // we still might be receiving leftover ACKs from data transfer
           try {
             returnFinAckSegment = handlePacket();
           } catch (SegmentChecksumMismatchException e) {
@@ -195,14 +209,16 @@ public class TCPsender extends TCPsocket {
             bsn--;
             continue;
           }
-        } while (returnFinAckSegment.ack && !returnFinAckSegment.fin && !returnFinAckSegment.syn);
+        } while (returnFinAckSegment.isAck && !returnFinAckSegment.isFin && !returnFinAckSegment.isSyn);
 
-        if (returnFinAckSegment.fin && returnFinAckSegment.ack && !returnFinAckSegment.syn) {
+        if (returnFinAckSegment.isFin && returnFinAckSegment.isAck && !returnFinAckSegment.isSyn) {
           nextByteExpected++;
           isFinAckReceived = true;
 
-          TCPsegment lastAckSegment = TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.ACK);
-          sendPacket(lastAckSegment, receiverIp, port);
+          // Send last ACK
+          GBNSegment lastAckSegment =
+              GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.ACK);
+          sendPacket(lastAckSegment, receiverIp, receiverPort);
         } else {
           throw new UnexpectedFlagException();
         }

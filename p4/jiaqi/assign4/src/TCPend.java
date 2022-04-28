@@ -10,7 +10,7 @@ public class TCPend {
     int mtu = -1;
     int sws = -1;
 
-    if (args.length == 12) {
+    if (args.length == 12) { // TCPEnd sender mode
       for (int i = 0; i < args.length; i++) {
         String arg = args[i];
         if (arg.equals("-p")) {
@@ -36,7 +36,7 @@ public class TCPend {
 
       long startTime = System.nanoTime();
 
-      TCPsender sender = new TCPsender(senderSourcePort, receiverIp, receiverPort, filename, mtu, sws);
+      Sender sender = new Sender(senderSourcePort, receiverIp, receiverPort, filename, mtu, sws);
       try {
         sender.openConnection();
         sender.sendData();
@@ -51,9 +51,9 @@ public class TCPend {
         long endTime = System.nanoTime();
         float runTime = (endTime - startTime) / 1000000000F;
         System.out.println("=====Other Stats=====");
-        System.out.println("    Runtime (s): " + TCPsocket.threePlaces.format(runTime));
+        System.out.println("    Runtime (s): " + TCPEndHost.threePlaces.format(runTime));
       }
-    } else if (args.length == 8) {
+    } else if (args.length == 8) { // TCPEnd receiver mode
       for (int i = 0; i < args.length; i++) {
         String arg = args[i];
         if (arg.equals("-p")) {
@@ -73,10 +73,10 @@ public class TCPend {
 
       long startTime = System.nanoTime();
 
-      TCPreceiver receiver = new TCPreceiver(receiverPort, filename, mtu, sws);
+      Receiver receiver = new Receiver(receiverPort, filename, mtu, sws);
       try {
         boolean isConnected = false;
-        TCPsegment firstAckReceived = null;
+        GBNSegment firstAckReceived = null;
         while (!isConnected) {
           try {
             firstAckReceived = receiver.openConnection();
@@ -99,7 +99,7 @@ public class TCPend {
       long endTime = System.nanoTime();
       float runTime = (endTime - startTime) / 1000000000F;
       System.out.println("=====Other Stats=====");
-      System.out.println("    Runtime (s): " + TCPsocket.threePlaces.format(runTime));
+      System.out.println("    Runtime (s): " + TCPEndHost.threePlaces.format(runTime));
     } else {
       System.out.println(
           "Sender: java TCPend -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>");
