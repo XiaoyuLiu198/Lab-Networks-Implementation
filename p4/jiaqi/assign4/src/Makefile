@@ -1,4 +1,7 @@
-all: TCPend.class
+all: TCPend
 
-TCPend.class: TCPend.java TCPEndHost.java GBNSegment.java Sender.java Receiver.java HandshakeType.java MaxRetransmitException.java SegmentChecksumMismatchException.java UnexpectedFlagException.java
-	javac $^
+TCPend: TCPend.java
+	javac *.javac
+
+clean:
+	rm -rf *.class
