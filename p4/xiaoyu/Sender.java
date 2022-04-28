@@ -26,7 +26,8 @@ public class Sender{
 
         // set up two threads here to check every second of the input thread, at the same time execute the output thread??
         HashMap<Byte, Long> buffer = new HashMap<Byte, Long>();
-        while ((this.written_len < send.getSws()) & (this.timestamp < limited)){
+        // while ((this.written_len < send.getSws()) & (this.timestamp < limited)){
+        while (this.timestamp < limited){
             while(this.start < load.length){
                 byte ori_start = this.start;
                 buffer.put(ori_start, timestamp);
@@ -48,11 +49,11 @@ public class Sender{
         }
 
     // TODO: size of each segment
-    public byte[] chunckMTU(byte MTU, byte[] payload, byte start){
+    public byte[] chunckMTU(byte MTU, byte[] payload, byte start, TCPEndobj){
         byte left_bytes = (byte)((byte) payload.length - start);
         byte[] single_chunck;
         if(left_bytes >= MTU){
-            single_chunck = new byte[24 + 8 + 24];
+            single_chunck = new byte[send.getSws()];
             // input ip header and udp header
 
             // update start point
