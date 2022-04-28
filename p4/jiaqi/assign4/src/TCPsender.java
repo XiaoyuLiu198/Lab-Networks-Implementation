@@ -81,8 +81,14 @@ public class TCPsender extends TCPsocket {
                                     return;
                                 }
 
-                                slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
+                                // slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
+                                dis.reset();
+                                dis.skip(currAckNum - (numByteWritten - numByteRead));
+                                this.sequenceNumber = currAckNum + 1;
+                                TCPutil.numByteSent = currAckNum;
+                                TCPutil.numRetransmission++;
                                 numByteWritten = TCPutil.numByteSent;
+
                                 currRetransmit++;
                                 break;
                             }
@@ -95,7 +101,13 @@ public class TCPsender extends TCPsocket {
                             System.out.println("Reached maximum number of retransmissions.");
                             return;
                         }
-                        slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
+                        // slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
+                        dis.reset();
+                        dis.skip(currAckNum - (numByteWritten - numByteRead));
+                        this.sequenceNumber = currAckNum + 1;
+                        TCPutil.numByteSent = currAckNum;
+                        TCPutil.numRetransmission++;
+
                         numByteWritten = TCPutil.numByteSent;
                         currRetransmit++;
                         break;
@@ -111,104 +123,211 @@ public class TCPsender extends TCPsocket {
         }
     }
 
-    public void connect() throws IOException {
-        boolean receivedSynAck = false;
-        this.socket = new DatagramSocket();
-        this.socket.setSoTimeout(5000); // default 5 seconds timeout
+    public void handshake(String type) throws IOException {
+        switch (type) {
+            case "connect":
+                boolean receivedSynAck = false;
+                this.socket = new DatagramSocket();
+                this.socket.setSoTimeout(5000); // default 5 seconds timeout
 
-        while (!receivedSynAck) {
-            // send SYN
-            TCPsegment synSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber, ConnectionState.SYN);
-            sendPacket(synSegment, remoteIP, remotePort);
-            this.sequenceNumber++;
+                while (!receivedSynAck) {
+                    // send SYN
+                    TCPsegment synSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
+                            ConnectionState.SYN);
+                    sendPacket(synSegment, remoteIP, remotePort);
+                    this.sequenceNumber++;
 
-            try {
-                // receive SYN+ACK
-                TCPsegment synAckSegment = handlePacket(this.mtu);
-                if (synAckSegment == null) {
-                    continue;
-                }
+                    try {
+                        // receive SYN+ACK
+                        TCPsegment synAckSegment = handlePacket(this.mtu);
+                        if (synAckSegment == null) {
+                            continue;
+                        }
 
-                // send ACK
-                if (synAckSegment.syn && synAckSegment.ack) {
-                    this.ackNumber++;
-                    receivedSynAck = true;
-                    TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber, ConnectionState.ACK);
-                    sendPacket(ackSegment, remoteIP, remotePort);
-                } else {
-                    TCPutil.numRetransmission++;
-                    if (TCPutil.numRetransmission > 16) { // default max number of retransmissions
-                        System.out.println("Reached maximum number of retransmissions.");
-                        return;
-                    }
-                    this.sequenceNumber--;
-                    continue;
-                }
-            } catch (SocketTimeoutException e) {
-                System.out.println("Timeout for ACK.");
-                TCPutil.numRetransmission++;
-                if (TCPutil.numRetransmission > 16) {
-                    System.out.println("Reached maximum number of retransmissions.");
-                    return;
-                }
-                this.sequenceNumber--;
-                continue;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public void close() {
-        boolean receivedFinAck = false;
-        int currRetransmit = 0;
-        // send FIN
-        while (!receivedFinAck) {
-            TCPsegment finSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-                    ConnectionState.FIN);
-            sendPacket(finSegment, remoteIP, remotePort);
-            this.sequenceNumber++;
-
-            try {
-                // receive FIN+ACK
-                TCPsegment finAckSegment = null;
-                do {
-                    finAckSegment = handlePacket(this.mtu);
-                    if (finAckSegment == null) {
+                        // send ACK
+                        if (synAckSegment.syn && synAckSegment.ack) {
+                            this.ackNumber++;
+                            receivedSynAck = true;
+                            TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
+                                    ConnectionState.ACK);
+                            sendPacket(ackSegment, remoteIP, remotePort);
+                        } else {
+                            TCPutil.numRetransmission++;
+                            if (TCPutil.numRetransmission > 16) { // default max number of retransmissions
+                                System.out.println("Reached maximum number of retransmissions.");
+                                return;
+                            }
+                            this.sequenceNumber--;
+                            continue;
+                        }
+                    } catch (SocketTimeoutException e) {
+                        System.out.println("Timeout for ACK.");
+                        TCPutil.numRetransmission++;
+                        if (TCPutil.numRetransmission > 16) {
+                            System.out.println("Reached maximum number of retransmissions.");
+                            return;
+                        }
                         this.sequenceNumber--;
                         continue;
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                } while (finAckSegment.ack && !finAckSegment.fin && !finAckSegment.syn);
-
-                if (finAckSegment.fin && finAckSegment.ack && !finAckSegment.syn) {
-                    this.ackNumber++;
-                    receivedFinAck = true;
-                    TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber, ConnectionState.ACK);
-                    sendPacket(ackSegment, remoteIP, remotePort);
                 }
-            } catch (SocketTimeoutException e) {
-                System.out.println("Timeout for ACK.");
-                currRetransmit++;
-                if (currRetransmit > 16) {
-                    System.out.println("Reached maximum number of retransmissions.");
-                    return;
-                }
-                TCPutil.numRetransmission++;
-                this.sequenceNumber--;
-                continue;
+                break;
+            case "close":
+                boolean receivedFinAck = false;
+                int currRetransmit = 0;
+                // send FIN
+                while (!receivedFinAck) {
+                    TCPsegment finSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
+                            ConnectionState.FIN);
+                    sendPacket(finSegment, remoteIP, remotePort);
+                    this.sequenceNumber++;
 
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+                    try {
+                        // receive FIN+ACK
+                        TCPsegment finAckSegment = null;
+                        do {
+                            finAckSegment = handlePacket(this.mtu);
+                            if (finAckSegment == null) {
+                                this.sequenceNumber--;
+                                continue;
+                            }
+                        } while (finAckSegment.ack && !finAckSegment.fin && !finAckSegment.syn);
+
+                        if (finAckSegment.fin && finAckSegment.ack && !finAckSegment.syn) {
+                            this.ackNumber++;
+                            receivedFinAck = true;
+                            TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
+                                    ConnectionState.ACK);
+                            sendPacket(ackSegment, remoteIP, remotePort);
+                        }
+                    } catch (SocketTimeoutException e) {
+                        System.out.println("Timeout for ACK.");
+                        currRetransmit++;
+                        if (currRetransmit > 16) {
+                            System.out.println("Reached maximum number of retransmissions.");
+                            return;
+                        }
+                        TCPutil.numRetransmission++;
+                        this.sequenceNumber--;
+                        continue;
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                break;
         }
     }
 
-    private void slidingWindow(DataInputStream dis, int currAckNum, int numByteWritten, int numByteRead)
-            throws IOException {
-        dis.reset();
-        dis.skip(currAckNum - (numByteWritten - numByteRead));
-        this.sequenceNumber = currAckNum + 1;
-        TCPutil.numByteSent = currAckNum;
-        TCPutil.numRetransmission++;
-    }
+    // public void connect() throws IOException {
+    // boolean receivedSynAck = false;
+    // this.socket = new DatagramSocket();
+    // this.socket.setSoTimeout(5000); // default 5 seconds timeout
+
+    // while (!receivedSynAck) {
+    // // send SYN
+    // TCPsegment synSegment = TCPsegment.getConnectionSegment(this.sequenceNumber,
+    // this.ackNumber,
+    // ConnectionState.SYN);
+    // sendPacket(synSegment, remoteIP, remotePort);
+    // this.sequenceNumber++;
+
+    // try {
+    // // receive SYN+ACK
+    // TCPsegment synAckSegment = handlePacket(this.mtu);
+    // if (synAckSegment == null) {
+    // continue;
+    // }
+
+    // // send ACK
+    // if (synAckSegment.syn && synAckSegment.ack) {
+    // this.ackNumber++;
+    // receivedSynAck = true;
+    // TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber,
+    // this.ackNumber,
+    // ConnectionState.ACK);
+    // sendPacket(ackSegment, remoteIP, remotePort);
+    // } else {
+    // TCPutil.numRetransmission++;
+    // if (TCPutil.numRetransmission > 16) { // default max number of
+    // retransmissions
+    // System.out.println("Reached maximum number of retransmissions.");
+    // return;
+    // }
+    // this.sequenceNumber--;
+    // continue;
+    // }
+    // } catch (SocketTimeoutException e) {
+    // System.out.println("Timeout for ACK.");
+    // TCPutil.numRetransmission++;
+    // if (TCPutil.numRetransmission > 16) {
+    // System.out.println("Reached maximum number of retransmissions.");
+    // return;
+    // }
+    // this.sequenceNumber--;
+    // continue;
+    // } catch (IOException e) {
+    // e.printStackTrace();
+    // }
+    // }
+    // }
+
+    // public void close() {
+    // boolean receivedFinAck = false;
+    // int currRetransmit = 0;
+    // // send FIN
+    // while (!receivedFinAck) {
+    // TCPsegment finSegment = TCPsegment.getConnectionSegment(this.sequenceNumber,
+    // this.ackNumber,
+    // ConnectionState.FIN);
+    // sendPacket(finSegment, remoteIP, remotePort);
+    // this.sequenceNumber++;
+
+    // try {
+    // // receive FIN+ACK
+    // TCPsegment finAckSegment = null;
+    // do {
+    // finAckSegment = handlePacket(this.mtu);
+    // if (finAckSegment == null) {
+    // this.sequenceNumber--;
+    // continue;
+    // }
+    // } while (finAckSegment.ack && !finAckSegment.fin && !finAckSegment.syn);
+
+    // if (finAckSegment.fin && finAckSegment.ack && !finAckSegment.syn) {
+    // this.ackNumber++;
+    // receivedFinAck = true;
+    // TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber,
+    // this.ackNumber,
+    // ConnectionState.ACK);
+    // sendPacket(ackSegment, remoteIP, remotePort);
+    // }
+    // } catch (SocketTimeoutException e) {
+    // System.out.println("Timeout for ACK.");
+    // currRetransmit++;
+    // if (currRetransmit > 16) {
+    // System.out.println("Reached maximum number of retransmissions.");
+    // return;
+    // }
+    // TCPutil.numRetransmission++;
+    // this.sequenceNumber--;
+    // continue;
+
+    // } catch (IOException e) {
+    // e.printStackTrace();
+    // }
+    // }
+    // }
+
+    // private void slidingWindow(DataInputStream dis, int currAckNum, int
+    // numByteWritten, int numByteRead)
+    // throws IOException {
+    // dis.reset();
+    // dis.skip(currAckNum - (numByteWritten - numByteRead));
+    // this.sequenceNumber = currAckNum + 1;
+    // TCPutil.numByteSent = currAckNum;
+    // TCPutil.numRetransmission++;
+    // }
 }

@@ -49,16 +49,18 @@ public class TCPreceiver extends TCPsocket {
                 long currTime = dataSegment.time;
 
                 int currSequenceNum = dataSegment.sequenceNum;
-                int outsideSws = this.ackNumber + (sws * mtu);
+                // int outsideSws = this.ackNumber + (sws * mtu);
 
                 // check received packet within sws or not
-                if (currSequenceNum >= outsideSws) {
-                    // out of sequence packets (outside sliding window size)
-                    TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
-                    sendPacket(currAckSegment, remoteIP, remotePort);
-                    TCPutil.numOutofSequence++;
-                    continue;
-                } else if (currSequenceNum < this.ackNumber) {
+                // if (currSequenceNum >= outsideSws) {
+                //     // out of sequence packets (outside sliding window size)
+                //     TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
+                //     sendPacket(currAckSegment, remoteIP, remotePort);
+                //     TCPutil.numOutofSequence++;
+                //     continue;
+                // } else 
+
+                if (currSequenceNum < this.ackNumber) {
                     TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
                     sendPacket(currAckSegment, remoteIP, remotePort);
                     TCPutil.numOutofSequence++;

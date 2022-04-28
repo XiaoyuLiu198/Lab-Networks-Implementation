@@ -34,9 +34,9 @@ public class TCPend {
             TCPsender sender = new TCPsender(port, remoteIP, remotePort, fileName, mtu, sws);
 
             try {
-                sender.connect();
+                sender.handshake("connect");
                 sender.send();
-                sender.close();
+                sender.handshake("close");
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
