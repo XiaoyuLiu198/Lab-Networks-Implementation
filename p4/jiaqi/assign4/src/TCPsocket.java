@@ -11,7 +11,7 @@ public class TCPsocket {
   public int senderSourcePort;
   public int receiverPort;
   public InetAddress receiverIp;
-  public String filename;
+  public String fileName;
   public int mtu;
   public int sws;
   public int bsn;
@@ -53,12 +53,12 @@ public class TCPsocket {
     this.receiverIp = receiverIp;
   }
 
-  public String getFilename() {
-    return filename;
+  public String getfileName() {
+    return fileName;
   }
 
-  public void setFilename(String filename) {
-    this.filename = filename;
+  public void setfileName(String fileName) {
+    this.fileName = fileName;
   }
 
   public int getMtu() {

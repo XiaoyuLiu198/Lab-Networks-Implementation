@@ -1,25 +1,25 @@
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-enum HandshakeType {
+enum ConnectionState {
   SYN, 
-  SYNACK, 
+  SYN_ACK, 
   ACK, 
   FIN, 
-  FINACK
+  FIN_ACK
 }
 
 public class TCPsegment implements Comparable<TCPsegment> {
 
   public int sequenceNum;
   public int ackNum;
-  public long time;
   public boolean syn;
   public boolean fin;
   public boolean ack;
-  public short checksum;
   public byte[] data;
   public int dataLength;
+  public short checksum;
+  public long time;
 
   public TCPsegment() {
     this(0, 0, System.nanoTime(), false, false, false, new byte[0], 0);
@@ -47,16 +47,16 @@ public class TCPsegment implements Comparable<TCPsegment> {
     return new TCPsegment(bsNum, ackNum, false, false, true, payloadData, payloadData.length);
   }
 
-  public static TCPsegment getConnectionSegment(int bsNum, int ackNum, HandshakeType type) {
-    if (type == HandshakeType.SYN) {
+  public static TCPsegment getConnectionSegment(int bsNum, int ackNum, ConnectionState type) {
+    if (type == ConnectionState.SYN) {
       return new TCPsegment(bsNum, ackNum, true, false, false, new byte[0], 0);
-    } else if (type == HandshakeType.SYNACK) {
+    } else if (type == ConnectionState.SYN_ACK) {
       return new TCPsegment(bsNum, ackNum, true, false, true, new byte[0], 0);
-    } else if (type == HandshakeType.ACK) {
+    } else if (type == ConnectionState.ACK) {
       return new TCPsegment(bsNum, ackNum, false, false, true, new byte[0], 0);
-    } else if (type == HandshakeType.FIN) {
+    } else if (type == ConnectionState.FIN) {
       return new TCPsegment(bsNum, ackNum, false, true, false, new byte[0], 0);
-    } else if (type == HandshakeType.FINACK) {
+    } else if (type == ConnectionState.FIN_ACK) {
       return new TCPsegment(bsNum, ackNum, false, true, true, new byte[0], 0);
     } else {
       return null;
@@ -68,31 +68,33 @@ public class TCPsegment implements Comparable<TCPsegment> {
   }
 
   public byte[] serialize() {
-    int length;
-    if (data == null) {
-      length = 24;
-    } else {
-      length = data.length + 24;
-    }
-    byte[] allSegmentData = new byte[length];
+    // int length;
+    // if (data == null) {
+    //   length = 24;
+    // } else {
+    //   length = data.length + 24;
+    // }
 
-    ByteBuffer bb = ByteBuffer.wrap(allSegmentData);
+    int length = (data == null) ? 24 : data.length + 24;
+    byte[] segmentData = new byte[length];
+
+    ByteBuffer bb = ByteBuffer.wrap(segmentData);
     bb.putInt(sequenceNum);
     bb.putInt(ackNum);
     bb.putLong(time);
 
-    int lengthAndFlags = 0b0;
-    lengthAndFlags = dataLength << 3;
+    int flags = 0b0;
+    flags = dataLength << 3;
     if (syn) {
-      lengthAndFlags += (0b1 << 2);
+      flags += (0b1 << 2);
     }
     if (fin) {
-      lengthAndFlags += (0b1 << 1);
+      flags += (0b1 << 1);
     }
     if (ack) {
-      lengthAndFlags += (0b1 << 0);
+      flags += (0b1 << 0);
     }
-    bb.putInt(lengthAndFlags);
+    bb.putInt(flags);
 
     bb.putInt(0x0000);
 
@@ -102,10 +104,10 @@ public class TCPsegment implements Comparable<TCPsegment> {
 
     bb.rewind();
     int tempSum = 0;
-    for (int i = 0; i < allSegmentData.length / 2; i++) {
+    for (int i = 0; i < segmentData.length / 2; i++) {
       tempSum += bb.getShort();
     }
-    if (allSegmentData.length % 2 == 1) {
+    if (segmentData.length % 2 == 1) {
       tempSum += (bb.get() & 0xff) << 8;
     }
 
@@ -118,7 +120,7 @@ public class TCPsegment implements Comparable<TCPsegment> {
 
     bb.putShort(22, this.checksum);
 
-    return allSegmentData;
+    return segmentData;
   }
 
   public TCPsegment deserialize(byte[] data) {
@@ -128,18 +130,18 @@ public class TCPsegment implements Comparable<TCPsegment> {
     this.ackNum = bb.getInt();
     this.time = bb.getLong();
 
-    int lengthAndFlags = bb.getInt();
-    this.dataLength = lengthAndFlags >> 3;
+    int flags = bb.getInt();
+    this.dataLength = flags >> 3;
     this.syn = false;
     this.ack = false;
     this.fin = false;
-    if (((lengthAndFlags >> 2) & 0b1) == 1) {
+    if (((flags >> 2) & 0b1) == 1) {
       this.syn = true;
     }
-    if (((lengthAndFlags >> 1) & 0b1) == 1) {
+    if (((flags >> 1) & 0b1) == 1) {
       this.fin = true;
     }
-    if ((lengthAndFlags & 0b1) == 1) {
+    if ((flags & 0b1) == 1) {
       this.ack = true;
     }
     bb.getShort();
@@ -223,8 +225,8 @@ public class TCPsegment implements Comparable<TCPsegment> {
   }
 
   @Override
-  public int compareTo(TCPsegment o) {
-    return Integer.compare(this.sequenceNum, o.sequenceNum);
+  public int compareTo(TCPsegment seg) {
+    return Integer.compare(this.sequenceNum, seg.sequenceNum);
   }
 
 }

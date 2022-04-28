@@ -10,12 +10,12 @@ import java.util.Arrays;
 
 public class TCPsender extends TCPsocket {
 
-  public TCPsender(int senderSourcePort, InetAddress receiverIp, int receiverPort, String filename,
+  public TCPsender(int senderSourcePort, InetAddress receiverIp, int receiverPort, String fileName,
       int mtu, int sws) {
     this.senderSourcePort = senderSourcePort;
     this.receiverIp = receiverIp;
     this.receiverPort = receiverPort;
-    this.filename = filename;
+    this.fileName = fileName;
     this.mtu = mtu;
     this.sws = sws;
   }
@@ -26,7 +26,7 @@ public class TCPsender extends TCPsocket {
 
     boolean isSynAckReceived = false;
     while (!isSynAckReceived) {
-      TCPsegment handshakeFirstSyn = TCPsegment.getConnectionSegment(bsn, nextByteExpected, HandshakeType.SYN);
+      TCPsegment handshakeFirstSyn = TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.SYN);
       sendPacket(handshakeFirstSyn, receiverIp, receiverPort);
       bsn++;
 
@@ -43,7 +43,7 @@ public class TCPsender extends TCPsocket {
           nextByteExpected++;
           isSynAckReceived = true;
 
-          TCPsegment handshakeThirdAck = TCPsegment.getConnectionSegment(bsn, nextByteExpected, HandshakeType.ACK);
+          TCPsegment handshakeThirdAck = TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.ACK);
           sendPacket(handshakeThirdAck, receiverIp, receiverPort);
         } else {
           this.numRetransmits++;
@@ -67,7 +67,7 @@ public class TCPsender extends TCPsocket {
 
   public void sendData() throws MaxRetransmitException {
 
-    try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(filename))) {
+    try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(fileName))) {
       DataInputStream inputStream = new DataInputStream(in);
       byte[] sendBuffer = new byte[mtu * sws];
 
@@ -180,7 +180,7 @@ public class TCPsender extends TCPsocket {
     boolean isFinAckReceived = false;
     short currNumRetransmits = 0;
     while (!isFinAckReceived) {
-      TCPsegment finSegment = TCPsegment.getConnectionSegment(bsn, nextByteExpected, HandshakeType.FIN);
+      TCPsegment finSegment = TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.FIN);
       sendPacket(finSegment, receiverIp, receiverPort);
       bsn++;
 
@@ -201,7 +201,7 @@ public class TCPsender extends TCPsocket {
           nextByteExpected++;
           isFinAckReceived = true;
 
-          TCPsegment lastAckSegment = TCPsegment.getConnectionSegment(bsn, nextByteExpected, HandshakeType.ACK);
+          TCPsegment lastAckSegment = TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.ACK);
           sendPacket(lastAckSegment, receiverIp, receiverPort);
         } else {
           throw new UnexpectedFlagException();

@@ -14,11 +14,11 @@ public class TCPreceiver extends TCPsocket {
   public InetAddress senderIp;
   public int senderPort;
 
-  public TCPreceiver(int receiverPort, String filename, int mtu, int sws) {
+  public TCPreceiver(int receiverPort, int mtu, int sws, String fileName) {
     this.receiverPort = receiverPort;
-    this.filename = filename;
     this.mtu = mtu;
     this.sws = sws;
+    this.fileName = fileName;
     this.lastByteReceived = 0;
     this.numPacketsSent = 0;
     this.numPacketsReceived = 0;
@@ -65,7 +65,7 @@ public class TCPreceiver extends TCPsocket {
       try {
         // Send 2nd Syn+Ack Packet
         TCPsegment handshakeSynAck =
-            TCPsegment.getConnectionSegment(bsn, nextByteExpected, HandshakeType.SYNACK);
+            TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.SYN_ACK);
         sendPacket(handshakeSynAck, senderIp, senderPort);
         bsn++;
 
@@ -105,7 +105,7 @@ public class TCPreceiver extends TCPsocket {
   }
 
   public void receiveDataAndClose(TCPsegment firstReceivedAck) throws MaxRetransmitException {
-    try (OutputStream out = new FileOutputStream(filename)) {
+    try (OutputStream out = new FileOutputStream(fileName)) {
       DataOutputStream outStream = new DataOutputStream(out);
 
       boolean isOpen = true;
@@ -222,7 +222,7 @@ public class TCPreceiver extends TCPsocket {
     while (!isLastAckReceived) {
 
       TCPsegment returnFinAckSegment =
-          TCPsegment.getConnectionSegment(bsn, nextByteExpected, HandshakeType.FINACK);
+          TCPsegment.getConnectionSegment(bsn, nextByteExpected, ConnectionState.FIN_ACK);
       sendPacket(returnFinAckSegment, senderIp, senderPort);
       bsn++;
 

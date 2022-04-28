@@ -3,10 +3,10 @@ import java.net.InetAddress;
 
 public class TCPend {
   public static void main(String[] args) throws IOException {
-    int senderSourcePort = -1;
-    int receiverPort = -1;
-    InetAddress receiverIp = null;
-    String filename = null;
+    int port = -1;
+    int remotePort = -1;
+    InetAddress remoteIP = null;
+    String fileName = null;
     int mtu = -1;
     int sws = -1;
 
@@ -14,13 +14,13 @@ public class TCPend {
       for (int i = 0; i < args.length; i++) {
         String arg = args[i];
         if (arg.equals("-p")) {
-          senderSourcePort = Integer.parseInt(args[++i]);
+          port = Integer.parseInt(args[++i]);
         } else if (arg.equals("-s")) {
-          receiverIp = InetAddress.getByName(args[++i]);
+          remoteIP = InetAddress.getByName(args[++i]);
         } else if (arg.equals("-a")) {
-          receiverPort = Integer.parseInt(args[++i]);
+          remotePort = Integer.parseInt(args[++i]);
         } else if (arg.equals("-f")) {
-          filename = args[++i];
+          fileName = args[++i];
         } else if (arg.equals("-m")) {
           mtu = Integer.parseInt(args[++i]);
         } else if (arg.equals("-c")) {
@@ -28,13 +28,13 @@ public class TCPend {
         }
       }
 
-      if (receiverIp == null || receiverPort == -1 || senderSourcePort == -1 || sws == -1
-          || mtu == -1 || filename == null) {
+      if (remoteIP == null || remotePort == -1 || port == -1 || sws == -1
+          || mtu == -1 || fileName == null) {
         System.out.println(
             "Sender: java TCPend -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>");
       }
 
-      TCPsender sender = new TCPsender(senderSourcePort, receiverIp, receiverPort, filename, mtu, sws);
+      TCPsender sender = new TCPsender(port, remoteIP, remotePort, fileName, mtu, sws);
       try {
         sender.openConnection();
         sender.sendData();
@@ -52,21 +52,19 @@ public class TCPend {
       for (int i = 0; i < args.length; i++) {
         String arg = args[i];
         if (arg.equals("-p")) {
-          receiverPort = Integer.parseInt(args[++i]);
-        } else if (arg.equals("-f")) {
-          filename = args[++i];
+          remotePort = Integer.parseInt(args[++i]);
         } else if (arg.equals("-m")) {
           mtu = Integer.parseInt(args[++i]);
         } else if (arg.equals("-c")) {
           sws = Integer.parseInt(args[++i]);
+        } else if (arg.equals("-f")) {
+          fileName = args[++i];
+        } else {
+          System.out.println("Wrong command.");
         }
       }
 
-      if (receiverPort == -1 || mtu == -1 || sws == -1 || filename == null) {
-        System.out.println("Receiver: java TCPend -p <port> -m <mtu> -c <sws> -f <file name>");
-      }
-
-      TCPreceiver receiver = new TCPreceiver(receiverPort, filename, mtu, sws);
+      TCPreceiver receiver = new TCPreceiver(remotePort, mtu, sws, fileName);
       try {
         boolean isConnected = false;
         TCPsegment firstAckReceived = null;

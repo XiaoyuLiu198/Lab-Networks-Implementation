@@ -59,17 +59,17 @@ public class RouteTable
 
 	/**
 	 * Populate the route table from a file.
-	 * @param filename name of the file containing the static route table
+	 * @param fileName name of the file containing the static route table
 	 * @param router the route table is associated with
 	 * @return true if route table was successfully loaded, otherwise false
 	 */
-	public boolean load(String filename, Router router)
+	public boolean load(String fileName, Router router)
 	{
 		// Open the file
 		BufferedReader reader;
 		try 
 		{
-			FileReader fileReader = new FileReader(filename);
+			FileReader fileReader = new FileReader(fileName);
 			reader = new BufferedReader(fileReader);
 		}
 		catch (FileNotFoundException e) 

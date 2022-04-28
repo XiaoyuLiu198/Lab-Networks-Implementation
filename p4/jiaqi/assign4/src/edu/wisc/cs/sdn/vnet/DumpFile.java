@@ -32,18 +32,18 @@ public class DumpFile
 		outStream = new DataOutputStream(System.out);
 	}
 	
-	public static DumpFile open(String filename)
+	public static DumpFile open(String fileName)
 	{
 		DumpFile dumpFile = null;
-		if (filename.equals("-"))
+		if (fileName.equals("-"))
 		{ dumpFile = new DumpFile(); }
 		else
 		{
 			try 
-			{ dumpFile = new DumpFile(new FileOutputStream(filename)); } 
+			{ dumpFile = new DumpFile(new FileOutputStream(fileName)); } 
 			catch (FileNotFoundException e) 
 			{
-				System.err.println("Cannot open " + filename);
+				System.err.println("Cannot open " + fileName);
 				return null;
 			}
 		}
