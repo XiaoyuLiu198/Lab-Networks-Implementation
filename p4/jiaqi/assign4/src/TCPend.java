@@ -34,7 +34,7 @@ public class TCPend {
             "Sender: java TCPend -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>");
       }
 
-      Sender sender = new Sender(senderSourcePort, receiverIp, receiverPort, filename, mtu, sws);
+      TCPsender sender = new TCPsender(senderSourcePort, receiverIp, receiverPort, filename, mtu, sws);
       try {
         sender.openConnection();
         sender.sendData();
@@ -66,10 +66,10 @@ public class TCPend {
         System.out.println("Receiver: java TCPend -p <port> -m <mtu> -c <sws> -f <file name>");
       }
 
-      Receiver receiver = new Receiver(receiverPort, filename, mtu, sws);
+      TCPreceiver receiver = new TCPreceiver(receiverPort, filename, mtu, sws);
       try {
         boolean isConnected = false;
-        GBNSegment firstAckReceived = null;
+        TCPsegment firstAckReceived = null;
         while (!isConnected) {
           try {
             firstAckReceived = receiver.openConnection();
@@ -90,9 +90,7 @@ public class TCPend {
       receiver.printFinalStatsHeader();
 
     } else {
-      System.out.println(
-          "Sender: java TCPend -p <port> -s <remote IP> -a <remote port> -f <file name> -m <mtu> -c <sws>");
-      System.out.println("Receiver: java TCPend -p <port> -m <mtu> -c <sws> -f <file name>");
+      System.out.println("Wrong command.");
     }
   }
 }

@@ -1,12 +1,7 @@
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-/**
- * 
- * @author Garrett
- *
- */
-public class GBNSegment implements Comparable<GBNSegment> {
+public class TCPsegment implements Comparable<TCPsegment> {
   static final int HEADER_LENGTH_BYTES = 24;
 
   protected int byteSequenceNum;
@@ -19,16 +14,17 @@ public class GBNSegment implements Comparable<GBNSegment> {
   protected byte[] payloadData;
   protected int dataLength;
 
-  public GBNSegment() {
+  public TCPsegment() {
     this(0, 0, System.nanoTime(), false, false, false, new byte[0], 0);
   }
 
-  public GBNSegment(int bsNum, int ackNum, boolean isSyn, boolean isFin, boolean isAck,
+  public TCPsegment(int bsNum, int ackNum, boolean isSyn, boolean isFin, boolean isAck,
       byte[] payloadData, int dataLength) {
     this(bsNum, ackNum, System.nanoTime(), isSyn, isFin, isAck, payloadData, dataLength);
   }
-  
-  public GBNSegment(int bsNum, int ackNum, long timestamp, boolean isSyn, boolean isFin, boolean isAck, byte[] payloadData, int dataLength) {
+
+  public TCPsegment(int bsNum, int ackNum, long timestamp, boolean isSyn, boolean isFin, boolean isAck,
+      byte[] payloadData, int dataLength) {
     this.byteSequenceNum = bsNum;
     this.ackNum = ackNum;
     this.timestamp = timestamp;
@@ -40,37 +36,28 @@ public class GBNSegment implements Comparable<GBNSegment> {
     this.dataLength = dataLength;
   }
 
-  /**
-   * Static factory methods
-   */
-  /**
-   * 
-   * @param bsNum
-   * @param payloadData
-   * @return
-   */
-  public static GBNSegment createDataSegment(int bsNum, int ackNum, byte[] payloadData) {
-    return new GBNSegment(bsNum, ackNum, false, false, true, payloadData, payloadData.length);
+  public static TCPsegment createDataSegment(int bsNum, int ackNum, byte[] payloadData) {
+    return new TCPsegment(bsNum, ackNum, false, false, true, payloadData, payloadData.length);
   }
 
-  public static GBNSegment createHandshakeSegment(int bsNum, int ackNum, HandshakeType type) {
+  public static TCPsegment createHandshakeSegment(int bsNum, int ackNum, HandshakeType type) {
     if (type == HandshakeType.SYN) {
-      return new GBNSegment(bsNum, ackNum, true, false, false, new byte[0], 0);
+      return new TCPsegment(bsNum, ackNum, true, false, false, new byte[0], 0);
     } else if (type == HandshakeType.SYNACK) {
-      return new GBNSegment(bsNum, ackNum, true, false, true, new byte[0], 0);
+      return new TCPsegment(bsNum, ackNum, true, false, true, new byte[0], 0);
     } else if (type == HandshakeType.ACK) {
-      return new GBNSegment(bsNum, ackNum, false, false, true, new byte[0], 0);
+      return new TCPsegment(bsNum, ackNum, false, false, true, new byte[0], 0);
     } else if (type == HandshakeType.FIN) {
-      return new GBNSegment(bsNum, ackNum, false, true, false, new byte[0], 0);
+      return new TCPsegment(bsNum, ackNum, false, true, false, new byte[0], 0);
     } else if (type == HandshakeType.FINACK) {
-      return new GBNSegment(bsNum, ackNum, false, true, true, new byte[0], 0);
+      return new TCPsegment(bsNum, ackNum, false, true, true, new byte[0], 0);
     } else {
       return null;
     }
   }
 
-  public static GBNSegment createAckSegment(int bsNum, int ackNum, long timestamp) {
-    return new GBNSegment(bsNum, ackNum, timestamp, false, false, true, new byte[0], 0);
+  public static TCPsegment createAckSegment(int bsNum, int ackNum, long timestamp) {
+    return new TCPsegment(bsNum, ackNum, timestamp, false, false, true, new byte[0], 0);
   }
 
   public byte[] serialize() {
@@ -87,9 +74,8 @@ public class GBNSegment implements Comparable<GBNSegment> {
     bb.putInt(ackNum);
     bb.putLong(timestamp);
 
-    // Length and flags word
     int lengthAndFlags = 0b0;
-    lengthAndFlags = dataLength << 3; // add three bits for flags
+    lengthAndFlags = dataLength << 3;
     if (isSyn) {
       lengthAndFlags += (0b1 << 2);
     }
@@ -101,22 +87,21 @@ public class GBNSegment implements Comparable<GBNSegment> {
     }
     bb.putInt(lengthAndFlags);
 
-    bb.putInt(0x0000); // don't calculate checksum yet
+    bb.putInt(0x0000);
 
     if (dataLength != 0) {
       bb.put(payloadData);
     }
 
-    // Calculate checksum
     bb.rewind();
     int tempSum = 0;
     for (int i = 0; i < allSegmentData.length / 2; i++) {
       tempSum += bb.getShort();
     }
-    if (allSegmentData.length % 2 == 1) { // there is an extra byte at the end
+    if (allSegmentData.length % 2 == 1) {
       tempSum += (bb.get() & 0xff) << 8;
     }
-    // Handle carry-over
+
     while (tempSum > 0xffff) {
       int carryoverBits = tempSum >> 16;
       int lastSixteenBits = tempSum - ((tempSum >> 16) << 16);
@@ -126,22 +111,18 @@ public class GBNSegment implements Comparable<GBNSegment> {
 
     bb.putShort(22, this.checksum);
 
-    // System.out.println("serialize(): " + payloadData.length);
-
     return allSegmentData;
   }
 
-  public GBNSegment deserialize(byte[] data) {
+  public TCPsegment deserialize(byte[] data) {
     ByteBuffer bb = ByteBuffer.wrap(data);
-    // System.out.println("deserialize(): bb.position: " + bb.position() + ", bb.limit(): " +
-    // bb.limit());
 
     this.byteSequenceNum = bb.getInt();
     this.ackNum = bb.getInt();
     this.timestamp = bb.getLong();
-    // Length and Flags
+
     int lengthAndFlags = bb.getInt();
-    this.dataLength = lengthAndFlags >> 3; // remove three bits for flags
+    this.dataLength = lengthAndFlags >> 3;
     this.isSyn = false;
     this.isAck = false;
     this.isFin = false;
@@ -154,12 +135,10 @@ public class GBNSegment implements Comparable<GBNSegment> {
     if ((lengthAndFlags & 0b1) == 1) {
       this.isAck = true;
     }
-    bb.getShort(); // these should all be 0
+    bb.getShort();
     this.checksum = bb.getShort();
 
     this.payloadData = Arrays.copyOfRange(data, bb.position(), dataLength + bb.position());
-
-    // System.out.println("deserialize(): payloadData.length: " + payloadData.length);
 
     return this;
   }
@@ -237,7 +216,7 @@ public class GBNSegment implements Comparable<GBNSegment> {
   }
 
   @Override
-  public int compareTo(GBNSegment o) {
+  public int compareTo(TCPsegment o) {
     return Integer.compare(this.byteSequenceNum, o.byteSequenceNum);
   }
 

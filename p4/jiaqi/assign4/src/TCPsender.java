@@ -8,9 +8,9 @@ import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
-public class Sender extends TCPEndHost {
+public class TCPsender extends TCPsocket {
 
-  public Sender(int senderSourcePort, InetAddress receiverIp, int receiverPort, String filename,
+  public TCPsender(int senderSourcePort, InetAddress receiverIp, int receiverPort, String filename,
       int mtu, int sws) {
     this.senderSourcePort = senderSourcePort;
     this.receiverIp = receiverIp;
@@ -28,14 +28,14 @@ public class Sender extends TCPEndHost {
     // piazza@395
     boolean isSynAckReceived = false;
     while (!isSynAckReceived) {
-      GBNSegment handshakeFirstSyn =
-          GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.SYN);
+      TCPsegment handshakeFirstSyn =
+          TCPsegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.SYN);
       sendPacket(handshakeFirstSyn, receiverIp, receiverPort);
       bsn++;
 
       // // Receive 2nd Syn+Ack Packet
       try {
-        GBNSegment handshakeSecondSynAck;
+        TCPsegment handshakeSecondSynAck;
         try {
           handshakeSecondSynAck = handlePacket();
         } catch (SegmentChecksumMismatchException e) {
@@ -48,8 +48,8 @@ public class Sender extends TCPEndHost {
           isSynAckReceived = true;
 
           // Send 3rd Ack Packet
-          GBNSegment handshakeThirdAck =
-              GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.ACK);
+          TCPsegment handshakeThirdAck =
+              TCPsegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.ACK);
           sendPacket(handshakeThirdAck, receiverIp, receiverPort);
         } else {
           this.numRetransmits++;
@@ -105,7 +105,7 @@ public class Sender extends TCPEndHost {
           onePayload = new byte[payloadLength];
           onePayload = Arrays.copyOfRange(sendBuffer, j * mtu, (j * mtu) + payloadLength);
 
-          GBNSegment dataSegment = GBNSegment.createDataSegment(bsn, nextByteExpected, onePayload);
+          TCPsegment dataSegment = TCPsegment.createDataSegment(bsn, nextByteExpected, onePayload);
           sendPacket(dataSegment, receiverIp, receiverPort);
           this.lastByteSent += payloadLength; // lastbytesent is the same as lastbytewritten?
           bsn += payloadLength;
@@ -114,7 +114,7 @@ public class Sender extends TCPEndHost {
         // wait for ACKs
         while (lastByteAcked < this.lastByteSent) {
           try {
-            GBNSegment currAck;
+            TCPsegment currAck;
             try {
               currAck = handlePacket();
             } catch (SegmentChecksumMismatchException e) {
@@ -192,14 +192,14 @@ public class Sender extends TCPEndHost {
     boolean isFinAckReceived = false;
     short currNumRetransmits = 0;
     while (!isFinAckReceived) {
-      GBNSegment finSegment =
-          GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.FIN);
+      TCPsegment finSegment =
+          TCPsegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.FIN);
       sendPacket(finSegment, receiverIp, receiverPort);
       bsn++;
 
       // Receive FIN+ACK
       try {
-        GBNSegment returnFinAckSegment = null;
+        TCPsegment returnFinAckSegment = null;
         do {
           // we still might be receiving leftover ACKs from data transfer
           try {
@@ -216,8 +216,8 @@ public class Sender extends TCPEndHost {
           isFinAckReceived = true;
 
           // Send last ACK
-          GBNSegment lastAckSegment =
-              GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.ACK);
+          TCPsegment lastAckSegment =
+              TCPsegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.ACK);
           sendPacket(lastAckSegment, receiverIp, receiverPort);
         } else {
           throw new UnexpectedFlagException();

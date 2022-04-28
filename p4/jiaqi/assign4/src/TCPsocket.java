@@ -8,7 +8,7 @@ import java.text.DecimalFormat;
  * @author Garrett
  *
  */
-public class TCPEndHost {
+public class TCPsocket {
   public static final int INITIAL_TIMEOUT_MS = 5000; // initial timeout in ms
   public static final float ALPHA_RTTFACTOR = 0.875F;
   public static final float BETA_DEVFACTOR = 0.75F;
@@ -93,13 +93,13 @@ public class TCPEndHost {
     this.bsn = bsn;
   }
 
-  public GBNSegment handlePacket() throws IOException, SegmentChecksumMismatchException {
+  public TCPsegment handlePacket() throws IOException, SegmentChecksumMismatchException {
     // Receive packet
-    byte[] bytes = new byte[mtu + GBNSegment.HEADER_LENGTH_BYTES];
-    DatagramPacket packet = new DatagramPacket(bytes, mtu + GBNSegment.HEADER_LENGTH_BYTES);
+    byte[] bytes = new byte[mtu + TCPsegment.HEADER_LENGTH_BYTES];
+    DatagramPacket packet = new DatagramPacket(bytes, mtu + TCPsegment.HEADER_LENGTH_BYTES);
     this.socket.receive(packet);
     bytes = packet.getData();
-    GBNSegment segment = new GBNSegment();
+    TCPsegment segment = new TCPsegment();
     segment = segment.deserialize(bytes);
 
     // Verify checksum
@@ -135,7 +135,7 @@ public class TCPEndHost {
     return segment;
   }
 
-  public void printOutput(GBNSegment segment, boolean isSender) {
+  public void printOutput(TCPsegment segment, boolean isSender) {
     if (isSender) {
       System.out.print("snd ");
     } else {
@@ -152,7 +152,7 @@ public class TCPEndHost {
     System.out.println();
   }
 
-  public void sendPacket(GBNSegment segment, InetAddress destIp, int destPort) {
+  public void sendPacket(TCPsegment segment, InetAddress destIp, int destPort) {
     byte[] segmentBytes = segment.serialize();
     DatagramPacket packet = new DatagramPacket(segmentBytes, segmentBytes.length, destIp, destPort);
     try {
