@@ -1,4 +1,0 @@
-thisissometestfile
-sampletestfile
-intxtformat
-testtesttest
