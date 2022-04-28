@@ -1,262 +1,243 @@
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
-import java.nio.ByteBuffer;
+import java.net.SocketTimeoutException;
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.LinkedBlockingQueue;
 
-// active
-public class Sender extends TCPSocket {
+public class Sender extends TCPEndHost {
 
-    private int retrans;
+  public Sender(int senderSourcePort, InetAddress receiverIp, int receiverPort, String filename,
+      int mtu, int sws) {
+    this.senderSourcePort = senderSourcePort;
+    this.receiverIp = receiverIp;
+    this.receiverPort = receiverPort;
+    this.filename = filename;
+    this.mtu = mtu;
+    this.sws = sws;
+  }
 
-    private Timer timer;
-    private LinkedBlockingQueue<BufferEntry> buffer;
-    private Timeout timeout;
-    private FileInputStream input;
+  public void openConnection() throws IOException, MaxRetransmitException {
+    this.socket = new DatagramSocket(senderSourcePort);
+    this.socket.setSoTimeout(INITIAL_TIMEOUT_MS);
 
-    public Sender(int port, int mtu, int sws, String file, InetAddress remoteAddress, int remotePort) {
-        super(port, mtu, sws, file);
-        this.retrans = 0;
-        this.state = TCPState.CLOSED;
-        this.remoteAddress = remoteAddress;
-        this.remotePort = remotePort;
+    // Send First Syn Packet
+    // piazza@395
+    boolean isSynAckReceived = false;
+    while (!isSynAckReceived) {
+      GBNSegment handshakeFirstSyn =
+          GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.SYN);
+      sendPacket(handshakeFirstSyn, receiverIp, receiverPort);
+      bsn++;
 
-        this.timer = new Timer(true);
-        this.buffer = new LinkedBlockingQueue<>(sws);
-        this.timeout = new Timeout(TCPSocket.DEFAULT_TIMEOUT * 1_000_000L);
-
+      // // Receive 2nd Syn+Ack Packet
+      try {
+        GBNSegment handshakeSecondSynAck;
         try {
-            this.socket = new DatagramSocket(port);
-            this.socket.setSoTimeout(TCPSocket.DEFAULT_TIMEOUT);
-            this.input = new FileInputStream(this.file);
-        } catch(SocketException e) {
-            e.printStackTrace();
-        } catch(IOException e) {
-            System.err.println("Cannot read file " + this.file);
-            System.exit(1);
+          handshakeSecondSynAck = handlePacket();
+        } catch (SegmentChecksumMismatchException e) {
+          e.printStackTrace();
+          continue;
         }
-        this.socket.connect​(this.remoteAddress, this.remotePort);
-        System.out.println("Sender operating on port " + this.port);
-        // System.out.println("Sender sending to port " + this.remotePort);
-    }
 
-    private void checkRetrans() {
-        if(this.retrans > TCPSocket.MAX_RETRANSMIT) {
-            System.err.println("Max retransmit time exceeded");
-            System.exit(1);
+        if (handshakeSecondSynAck.isSyn && handshakeSecondSynAck.isAck) {
+          nextByteExpected++;
+          isSynAckReceived = true;
+
+          // Send 3rd Ack Packet
+          GBNSegment handshakeThirdAck =
+              GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.ACK);
+          sendPacket(handshakeThirdAck, receiverIp, receiverPort);
+        } else {
+          this.numRetransmits++;
+          if (this.numRetransmits >= (MAX_RETRANSMITS + 1)) {
+            throw new MaxRetransmitException("Max SYN retransmits!");
+          }
+          bsn--;
+          continue;
         }
-        this.retrans += 1;
+      } catch (SocketTimeoutException e) {
+        System.err.println("Timeout while waiting for SYNACK!");
+        this.numRetransmits++;
+        if (this.numRetransmits % (MAX_RETRANSMITS + 1) == 0) {
+          throw new MaxRetransmitException("Max SYN retransmits!");
+        }
+        bsn--;
+        continue;
+      }
     }
+  }
 
-    @Override
-    public void connect() {
-        while(true) {
-            switch(this.state) {
-                case CLOSED:
-                    checkRetrans();
-                    this.sendSyn();
-                    this.state = TCPState.SYN_SENT;
-                    break;
-                case SYN_SENT:
-                    // receive syn-ack
-                    TCPPacket tcp = this.receiveSynAck();
-                    if(tcp != null) {
-                        this.timeout.update(tcp.seq, tcp.timestamp);
-                        this.sendAck(-1);
-                        this.state = TCPState.ESTABLISHED;
-                    } else { // timeout
-                        this.seq -= 1;
-                        this.ack -= 1;
-                        this.state = TCPState.CLOSED;
-                    }
-                    break;
-                case ESTABLISHED:
-                    this.retrans = 0;
-                    System.out.println("Connection established");
-                    return;
+  public void sendData() throws MaxRetransmitException {
+    // Data Transfer
+    try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(filename))) {
+      DataInputStream inputStream = new DataInputStream(in);
+      byte[] sendBuffer = new byte[mtu * sws]; // right now, buffer is the same size as the sws
+
+      // Initial filling up send buffer
+      int lastByteAcked = 0;
+      int lastByteWritten = 0;
+      short currRetransmit = 0;
+      int byteReadCount;
+      int currDupAck = 0;
+
+      inputStream.mark(mtu * sws);
+      // fill up entire sendbuffer, which is currently = sws
+      while ((byteReadCount = inputStream.read(sendBuffer, 0, mtu * sws)) != -1) {
+        lastByteWritten += byteReadCount;
+        // Send entire buffer (currently = sws)
+        for (int j = 0; j < (byteReadCount / mtu) + 1; j++) {
+          byte[] onePayload;
+          int payloadLength;
+          if (j == byteReadCount / mtu) { // last payload
+            payloadLength = byteReadCount % mtu;
+            if (payloadLength != 0) {
+              payloadLength = byteReadCount % mtu;
+            } else { // last payload is 0
+              break;
             }
-        }
-    }
+          } else {
+            payloadLength = mtu;
+          }
+          onePayload = new byte[payloadLength];
+          onePayload = Arrays.copyOfRange(sendBuffer, j * mtu, (j * mtu) + payloadLength);
 
-    private TimerTask createTask(int seq, byte[] data) {
-        TimerTask task = new TimerTask() {
-            int retransTime = 0;
-            @Override
-            public void run() {
-                if(retransTime > TCPSocket.MAX_RETRANSMIT) {
-                    this.cancel();
-                    System.err.println("Retransmit failed");
-                    System.exit(1);
-                } else {
-                    System.err.println("Retransmit " + seq);
-                    resend(seq, data);
-                    retransTime += 1;
+          GBNSegment dataSegment = GBNSegment.createDataSegment(bsn, nextByteExpected, onePayload);
+          sendPacket(dataSegment, receiverIp, receiverPort);
+          this.lastByteSent += payloadLength; // lastbytesent is the same as lastbytewritten?
+          bsn += payloadLength;
+        }
+
+        // wait for ACKs
+        while (lastByteAcked < this.lastByteSent) {
+          try {
+            GBNSegment currAck;
+            try {
+              currAck = handlePacket();
+            } catch (SegmentChecksumMismatchException e) {
+              e.printStackTrace();
+              continue;
+            }
+
+            if (!currAck.isAck) {
+              throw new UnexpectedFlagException("Expected ACK!", currAck);
+            }
+            this.socket.setSoTimeout((int) (timeout / 1000000));
+
+            // piazza@393_f2 AckNum == NextByteExpected == LastByteAcked + 1
+            int prevAck = lastByteAcked;
+            lastByteAcked = currAck.ackNum - 1;
+
+            // Retransmit (three duplicate acks)
+            if (prevAck == lastByteAcked) {
+              currDupAck++;
+              this.numDupAcks++;
+              if (currDupAck == 3) {
+                if (currRetransmit >= MAX_RETRANSMITS) {
+                  throw new MaxRetransmitException("Max data retransmits!");
                 }
+                // Slide the window
+                // skip bytes from lastAck to mark (start of buffer in read loop)
+                slideWindow(inputStream, lastByteAcked, lastByteWritten, byteReadCount);
+                lastByteWritten = this.lastByteSent;
+                currRetransmit++;
+                break; // exit wait ACK loop
+              }
+            } else {
+              currDupAck = 0;
             }
-        };
-        return task;
-    }
-
-    protected void resend(int seq, byte[] data) {
-        synchronized(this) {
-            int old = this.seq;
-            this.seq = seq;
-            this.send(-1, false, false, false, data);
-            this.seq = old;
-        }
-    }
-
-    private byte[] readData() {
-        byte[] data = new byte[this.mtu];
-        int len = -1;
-        try {
-            len = this.input.read(data);
-        } catch(IOException e) {
-            System.err.println("Cannot read file " + this.file);
-            System.exit(1);
-        }
-        if (len != -1 && len < this.mtu) {
-            data = Arrays.copyOf(data, len);
-        }
-        return len != -1 ? data : null;
-    }
-
-    private void producer() {
-        while (true) {
-            switch(this.state) {
-                case ESTABLISHED:
-                    // System.out.println("ESTABLISHED");
-                    byte[] data = this.readData();
-                    if(data == null) {
-                        if(this.buffer.size() == 0) {
-                            checkRetrans();
-                            this.sendFin();
-                            this.state = TCPState.FIN_WAIT;
-                        }
-                    } else {
-                        TimerTask task = this.createTask(this.seq - data.length, data);
-                        BufferEntry be = new BufferEntry(this.seq, data, task);
-                        try {
-                            this.buffer.put(be);
-                        } catch(Exception e) {
-                            e.printStackTrace();
-                        }
-                        // if(this.seq == 9) {
-                        //     this.seq += this.mtu;
-                        //     continue;
-                        // }
-                        this.send(-1, false, false, false, data);
-                        long delay = this.timeout.getTo() / 1_000_000 * 2;
-                        try {
-                            this.timer.scheduleAtFixedRate(task, delay, delay);
-                        } catch(Exception e) {
-                            
-                        }
-                    }
-                    break;
-                case FIN_WAIT:
-                    // System.out.println("FIN_WAIT");
-                    checkRetrans();
-                    TCPPacket tcp = this.receiveAckFin();
-                    if(tcp != null) {
-                        this.sendAck(-1);
-                        this.state = TCPState.TIME_WAIT;
-                    } else {
-                        this.seq -= 1;
-                        this.ack -= 1;
-                        this.state = TCPState.ESTABLISHED;
-                    }
-                    break;
-                case TIME_WAIT:
-                    try {
-                        this.input.close();
-                    } catch(IOException e) {
-                        e.printStackTrace();
-                    }
-                    System.out.println("Connection closed");
-                    return;
-                case CLOSED:
-                    break;
+          } catch (SocketTimeoutException e) {
+            System.err.println("Timeout while waiting for ACK!");
+            if (currRetransmit >= MAX_RETRANSMITS) {
+              throw new MaxRetransmitException("Max data retransmits!");
             }
+            // Slide the window and retransmit after timeout
+            slideWindow(inputStream, lastByteAcked, lastByteWritten, byteReadCount);
+            lastByteWritten = this.lastByteSent;
+            currRetransmit++;
+            break; // exit wait ACK loop
+          } catch (UnexpectedFlagException e) {
+            e.printStackTrace();
+            continue;
+          }
+          // reset counter because we made it through the window without retrasmission
+          currRetransmit = 0;
         }
-    }
 
-    private void consumer() {
-        int lastAck = 1;
-        int dup = 0;
-        while (true) {
-            switch(this.state) {
-                case ESTABLISHED:
-                        if(this.buffer.isEmpty()) {
-                            continue;
-                        }
-                        TCPPacket tcp = this.receiveAck();
-                        if(tcp == null) {
-                            continue;
-                        }
-                        this.timeout.update(tcp.seq, tcp.timestamp);
-                        if(tcp.ack == lastAck) {
-                            dup += 1;
-                            System.out.println("Duplicate " + dup);
-                            if(dup == 3) {
-                                this.retransmit();
-                                dup = 0;
-                            }
-                        } else {
-                            dup = 0;
-                            BufferEntry be = null;
-                            try {
-                                do {
-                                    be = this.buffer.take();
-                                    be.task.cancel();
-                                    System.out.println("Remove " + be.seq);
-                                } while ((be.seq + be.data.length) < tcp.ack - 1 && this.buffer.size() > 0);
-                            } catch(Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        lastAck = tcp.ack;
-                    break;
-                case FIN_WAIT:
-                case TIME_WAIT:
-                case CLOSED:
-                    return;
-            }
+        // remove from buffer; mark position in file
+        inputStream.mark(mtu * sws);
+      }
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void slideWindow(DataInputStream inputStream, int lastByteAcked, int lastByteWritten,
+      int byteReadCount) throws IOException {
+    inputStream.reset();
+    inputStream.skip(lastByteAcked - (lastByteWritten - byteReadCount));
+    this.lastByteSent = lastByteAcked;
+    this.bsn = lastByteAcked + 1;
+    this.numRetransmits++;
+  }
+
+  public void closeConnection()
+      throws IOException, MaxRetransmitException, UnexpectedFlagException {
+    // Send FIN
+    boolean isFinAckReceived = false;
+    short currNumRetransmits = 0;
+    while (!isFinAckReceived) {
+      GBNSegment finSegment =
+          GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.FIN);
+      sendPacket(finSegment, receiverIp, receiverPort);
+      bsn++;
+
+      // Receive FIN+ACK
+      try {
+        GBNSegment returnFinAckSegment = null;
+        do {
+          // we still might be receiving leftover ACKs from data transfer
+          try {
+            returnFinAckSegment = handlePacket();
+          } catch (SegmentChecksumMismatchException e) {
+            e.printStackTrace();
+            bsn--;
+            continue;
+          }
+        } while (returnFinAckSegment.isAck && !returnFinAckSegment.isFin && !returnFinAckSegment.isSyn);
+
+        if (returnFinAckSegment.isFin && returnFinAckSegment.isAck && !returnFinAckSegment.isSyn) {
+          nextByteExpected++;
+          isFinAckReceived = true;
+
+          // Send last ACK
+          GBNSegment lastAckSegment =
+              GBNSegment.createHandshakeSegment(bsn, nextByteExpected, HandshakeType.ACK);
+          sendPacket(lastAckSegment, receiverIp, receiverPort);
+        } else {
+          throw new UnexpectedFlagException();
         }
-    }
-
-    private void retransmit() {
-        for (BufferEntry be : this.buffer) {
-            this.seq -= be.data.length;
+      } catch (SocketTimeoutException e) {
+        System.err.println("Timeout while waiting for FINACK!");
+        currNumRetransmits++;
+        if (currNumRetransmits >= (MAX_RETRANSMITS + 1)) {
+          throw new MaxRetransmitException("Max FIN retransmits!");
         }
-        for (BufferEntry be : this.buffer) {
-            this.send(-1, false, false, false, be.data);
-        }
+        this.numRetransmits++;
+        bsn--;
+        continue;
+      }
     }
+  }
 
-    @Override
-    public void run() {
-        Thread p = new Thread(() -> producer());
-        Thread c = new Thread(() -> consumer());
-        p.start();
-        c.start();
-    }
-}
+  public void printFinalStatsHeader() {
+    System.out.println("TCPEnd Sender Finished==========");
+    this.printFinalStats();
+  }
 
-class BufferEntry {
-    int seq;
-    byte[] data;
-    TimerTask task;
-
-    public BufferEntry(int seq, byte[] data, TimerTask task) {
-        this.seq = seq;
-        this.data = data;
-        this.task = task;
-    }
 }
