@@ -68,13 +68,6 @@ public class TCPsegment implements Comparable<TCPsegment> {
   }
 
   public byte[] serialize() {
-    // int length;
-    // if (data == null) {
-    //   length = 24;
-    // } else {
-    //   length = data.length + 24;
-    // }
-
     int length = (data == null) ? 24 : data.length + 24;
     byte[] segmentData = new byte[length];
 
@@ -103,20 +96,20 @@ public class TCPsegment implements Comparable<TCPsegment> {
     }
 
     bb.rewind();
-    int tempSum = 0;
+    int temp = 0;
     for (int i = 0; i < segmentData.length / 2; i++) {
-      tempSum += bb.getShort();
+      temp += bb.getShort();
     }
     if (segmentData.length % 2 == 1) {
-      tempSum += (bb.get() & 0xff) << 8;
+      temp += (bb.get() & 0xff) << 8;
     }
 
-    while (tempSum > 0xffff) {
-      int carryoverBits = tempSum >> 16;
-      int lastSixteenBits = tempSum - ((tempSum >> 16) << 16);
-      tempSum = lastSixteenBits + carryoverBits;
+    while (temp > 0xffff) {
+      // int carryoverBits = temp >> 16;
+      // int lastSixteenBits = temp - ((temp >> 16) << 16);
+      temp = (temp - ((temp >> 16) << 16)) + (temp >> 16);
     }
-    this.checksum = (short) (~tempSum & 0xffff);
+    this.checksum = (short) (~temp & 0xffff);
 
     bb.putShort(22, this.checksum);
 
