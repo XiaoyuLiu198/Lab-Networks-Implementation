@@ -1,7 +1,7 @@
 all: TCPend
 
 TCPend: TCPend.java
-	javac *.javac
+	javac *.java
 
 clean:
 	rm -rf *.class
