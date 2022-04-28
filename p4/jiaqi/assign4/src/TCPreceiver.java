@@ -116,7 +116,7 @@ public class TCPreceiver extends TCPsocket {
       if (firstReceivedAck != null && firstReceivedAck.ack && firstReceivedAck.dataLength > 0) {
         // if handshake ACK is lost, then the first ACK might contain data.
         sendBuffer.add(firstReceivedAck);
-        bsnBufferSet.add(firstReceivedAck.byteSequenceNum);
+        bsnBufferSet.add(firstReceivedAck.sequenceNum);
       }
 
       while (isOpen) {
@@ -133,9 +133,9 @@ public class TCPreceiver extends TCPsocket {
         // If a client is sending a cumulative acknowledgment of several packets, the
         // timestamp from the latest received packet which is causing this acknowledgment
         // should be copied into the reply.
-        long mostRecentTimestamp = data.timestamp;
+        long mostRecentTimestamp = data.time;
 
-        int currBsn = data.byteSequenceNum;
+        int currBsn = data.sequenceNum;
         int firstByteBeyondSws = nextByteExpected + (sws * mtu);
         // Check if received packet is within SWS
         if (currBsn >= firstByteBeyondSws) {
@@ -170,7 +170,7 @@ public class TCPreceiver extends TCPsocket {
             TCPsegment minSegment = sendBuffer.peek();
 
             // check if sendBuffer has next expected packet
-            if (minSegment.byteSequenceNum == nextByteExpected) {
+            if (minSegment.sequenceNum == nextByteExpected) {
               // Terminate Connection
               if (!minSegment.ack || minSegment.getDataLength() <= 0) {
                 // receive non-data packeton close
@@ -178,7 +178,7 @@ public class TCPreceiver extends TCPsocket {
                   outStream.close();
                   closeConnection(mostRecentTimestamp);
                   sendBuffer.remove(minSegment);
-                  bsnBufferSet.remove(minSegment.byteSequenceNum);
+                  bsnBufferSet.remove(minSegment.sequenceNum);
                   isOpen = false;
                 } else {
                   throw new UnexpectedFlagException("Expected ACK and data or FIN!", minSegment);
@@ -193,7 +193,7 @@ public class TCPreceiver extends TCPsocket {
                     TCPsegment.getAckSegment(bsn, nextByteExpected, mostRecentTimestamp);
                 sendPacket(ackSegment, senderIp, senderPort);
 
-                bsnBufferSet.remove(minSegment.byteSequenceNum);
+                bsnBufferSet.remove(minSegment.sequenceNum);
                 sendBuffer.remove(minSegment);
               }
             } else {

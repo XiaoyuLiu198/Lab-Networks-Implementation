@@ -104,12 +104,12 @@ public class TCPsocket {
     }
 
     if (segment.ack && segment.dataLength == 0) {
-      if (segment.byteSequenceNum == 0) {
-        this.ertt = (long) (System.nanoTime() - segment.timestamp);
+      if (segment.sequenceNum == 0) {
+        this.ertt = (long) (System.nanoTime() - segment.time);
         this.edev = 0;
         this.timeout = 2 * ertt;
       } else {
-        long srtt = (long) (System.nanoTime() - segment.timestamp);
+        long srtt = (long) (System.nanoTime() - segment.time);
         long sdev = Math.abs(srtt - ertt);
         this.ertt = (long) (0.875f * ertt + (1 - 0.875f) * srtt);
         this.edev = (long) (0.75f * edev + (1 - 0.75f) * sdev);
@@ -135,7 +135,7 @@ public class TCPsocket {
     System.out.print(segment.ack ? " A" : " -");
     System.out.print(segment.fin ? " F" : " -");
     System.out.print((segment.getDataLength() > 0) ? " D" : " -");
-    System.out.print(" " + segment.byteSequenceNum);
+    System.out.print(" " + segment.sequenceNum);
     System.out.print(" " + segment.getDataLength());
     System.out.print(" " + segment.ackNum);
     System.out.println();

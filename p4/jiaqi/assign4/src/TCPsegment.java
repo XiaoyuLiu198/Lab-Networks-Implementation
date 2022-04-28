@@ -1,16 +1,24 @@
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+enum HandshakeType {
+  SYN, 
+  SYNACK, 
+  ACK, 
+  FIN, 
+  FINACK
+}
+
 public class TCPsegment implements Comparable<TCPsegment> {
 
-  public int byteSequenceNum;
+  public int sequenceNum;
   public int ackNum;
-  public long timestamp;
+  public long time;
   public boolean syn;
   public boolean fin;
   public boolean ack;
   public short checksum;
-  public byte[] payloadData;
+  public byte[] data;
   public int dataLength;
 
   public TCPsegment() {
@@ -24,14 +32,14 @@ public class TCPsegment implements Comparable<TCPsegment> {
 
   public TCPsegment(int bsNum, int ackNum, long timestamp, boolean syn, boolean fin, boolean ack,
       byte[] payloadData, int dataLength) {
-    this.byteSequenceNum = bsNum;
+    this.sequenceNum = bsNum;
     this.ackNum = ackNum;
-    this.timestamp = timestamp;
+    this.time = timestamp;
     this.syn = syn;
     this.fin = fin;
     this.ack = ack;
     this.checksum = 0;
-    this.payloadData = payloadData;
+    this.data = payloadData;
     this.dataLength = dataLength;
   }
 
@@ -61,17 +69,17 @@ public class TCPsegment implements Comparable<TCPsegment> {
 
   public byte[] serialize() {
     int length;
-    if (payloadData == null) {
+    if (data == null) {
       length = 24;
     } else {
-      length = payloadData.length + 24;
+      length = data.length + 24;
     }
     byte[] allSegmentData = new byte[length];
 
     ByteBuffer bb = ByteBuffer.wrap(allSegmentData);
-    bb.putInt(byteSequenceNum);
+    bb.putInt(sequenceNum);
     bb.putInt(ackNum);
-    bb.putLong(timestamp);
+    bb.putLong(time);
 
     int lengthAndFlags = 0b0;
     lengthAndFlags = dataLength << 3;
@@ -89,7 +97,7 @@ public class TCPsegment implements Comparable<TCPsegment> {
     bb.putInt(0x0000);
 
     if (dataLength != 0) {
-      bb.put(payloadData);
+      bb.put(data);
     }
 
     bb.rewind();
@@ -116,9 +124,9 @@ public class TCPsegment implements Comparable<TCPsegment> {
   public TCPsegment deserialize(byte[] data) {
     ByteBuffer bb = ByteBuffer.wrap(data);
 
-    this.byteSequenceNum = bb.getInt();
+    this.sequenceNum = bb.getInt();
     this.ackNum = bb.getInt();
-    this.timestamp = bb.getLong();
+    this.time = bb.getLong();
 
     int lengthAndFlags = bb.getInt();
     this.dataLength = lengthAndFlags >> 3;
@@ -137,17 +145,17 @@ public class TCPsegment implements Comparable<TCPsegment> {
     bb.getShort();
     this.checksum = bb.getShort();
 
-    this.payloadData = Arrays.copyOfRange(data, bb.position(), dataLength + bb.position());
+    this.data = Arrays.copyOfRange(data, bb.position(), dataLength + bb.position());
 
     return this;
   }
 
   public int getByteSequenceNum() {
-    return byteSequenceNum;
+    return sequenceNum;
   }
 
   public void setByteSequenceNum(int byteSequenceNum) {
-    this.byteSequenceNum = byteSequenceNum;
+    this.sequenceNum = byteSequenceNum;
   }
 
   public int getAckNum() {
@@ -159,11 +167,11 @@ public class TCPsegment implements Comparable<TCPsegment> {
   }
 
   public long getTimestamp() {
-    return timestamp;
+    return time;
   }
 
   public void setTimestamp(long timestamp) {
-    this.timestamp = timestamp;
+    this.time = timestamp;
   }
 
   public int getDataLength() {
@@ -211,12 +219,12 @@ public class TCPsegment implements Comparable<TCPsegment> {
   }
 
   public byte[] getPayload() {
-    return this.payloadData;
+    return this.data;
   }
 
   @Override
   public int compareTo(TCPsegment o) {
-    return Integer.compare(this.byteSequenceNum, o.byteSequenceNum);
+    return Integer.compare(this.sequenceNum, o.sequenceNum);
   }
 
 }
