@@ -67,7 +67,7 @@ public class TCPend {
                 boolean connected = false;
                 TCPsegment firstAckSegment = null;
                 while (!connected) {
-                    firstAckSegment = receiver.connect();
+                    firstAckSegment = receiver.handshake("connect", 0);
                     connected = true;
                 }
                 receiver.receive(firstAckSegment);
