@@ -31,10 +31,10 @@ public class TCPreceiver extends TCPsocket {
             PriorityQueue<TCPsegment> receive = new PriorityQueue<>(sws);
             HashSet<Integer> sequenceNumbers = new HashSet<>();
 
-            if (ackSegment != null && ackSegment.ack && ackSegment.data.length > 0) {
+            if (ackSegment != null && ackSegment.isAck() && ackSegment.getDataSize() > 0) {
                 // if handshake ACK is lost, then the first ACK might contain data.
                 receive.add(ackSegment);
-                sequenceNumbers.add(ackSegment.sequenceNum);
+                sequenceNumbers.add(ackSegment.getSequenceNum());
             }
 
             while (open) {
@@ -46,19 +46,22 @@ public class TCPreceiver extends TCPsocket {
                     continue;
                 }
 
-                long currTime = dataSegment.time;
+                long currTime = dataSegment.getTime();
 
-                int currSequenceNum = dataSegment.sequenceNum;
-                int outsideSws = this.ackNumber + (sws * mtu);
+                int currSequenceNum = dataSegment.getSequenceNum();
+                // int outsideSws = this.ackNumber + (sws * mtu);
 
                 // check received packet within sws or not
-                if (currSequenceNum >= outsideSws) {
-                    // out of sequence packets (outside sliding window size)
-                    TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
-                    sendPacket(currAckSegment, remoteIP, remotePort);
-                    TCPutil.numOutofSequence++;
-                    continue;
-                } else if (currSequenceNum < this.ackNumber) {
+                // if (currSequenceNum >= outsideSws) {
+                // // out of sequence packets (outside sliding window size)
+                // TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber,
+                // this.ackNumber, currTime);
+                // sendPacket(currAckSegment, remoteIP, remotePort);
+                // TCPutil.numOutofSequence++;
+                // continue;
+                // } else
+
+                if (currSequenceNum < this.ackNumber) {
                     TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
                     sendPacket(currAckSegment, remoteIP, remotePort);
                     TCPutil.numOutofSequence++;
@@ -75,28 +78,30 @@ public class TCPreceiver extends TCPsocket {
                     while (!receive.isEmpty()) {
                         TCPsegment firstSegment = receive.peek();
 
-                        if (firstSegment.sequenceNum == this.ackNumber) {
-                            if (!firstSegment.ack || firstSegment.data.length <= 0) {
-                                if (firstSegment.fin) {
+                        if (firstSegment.getSequenceNum() == this.ackNumber) {
+                            if (!firstSegment.isAck() || firstSegment.getDataSize() <= 0) {
+                                if (firstSegment.isFin()) {
                                     dos.close();
-                                    close(currTime);
+                                    handshake("close", currTime);
                                     receive.remove(firstSegment);
-                                    sequenceNumbers.remove(firstSegment.sequenceNum);
+                                    sequenceNumbers.remove(firstSegment.getSequenceNum());
                                     open = false;
-                                } 
+                                }
                             } else {
-                                dos.write(firstSegment.data);
+                                dos.write(firstSegment.getData());
 
-                                this.ackNumber += firstSegment.data.length;
-                                TCPutil.numByteReceived += firstSegment.data.length;
-                                TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
+                                this.ackNumber += firstSegment.getDataSize();
+                                TCPutil.numByteReceived += firstSegment.getDataSize();
+                                TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber,
+                                        this.ackNumber, currTime);
                                 sendPacket(currAckSegment, remoteIP, remotePort);
-                                sequenceNumbers.remove(firstSegment.sequenceNum);
+                                sequenceNumbers.remove(firstSegment.getSequenceNum());
                                 receive.remove(firstSegment);
                             }
                         } else {
                             // send duplicate ACK
-                            TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
+                            TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber,
+                                    currTime);
                             sendPacket(currAckSegment, remoteIP, remotePort);
                             break;
                         }
@@ -107,128 +112,181 @@ public class TCPreceiver extends TCPsocket {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
-        } 
+        }
     }
 
-    public TCPsegment connect() throws IOException {
-        TCPsegment ackSegment = null;
+    public TCPsegment handshake(String type, long currTime) throws IOException {
+        switch (type) {
+            case "connect":
+                TCPsegment ackSegment = null;
 
-        this.socket = new DatagramSocket(port);
-        this.socket.setSoTimeout(0);
+                this.socket = new DatagramSocket(port);
+                this.socket.setSoTimeout(0);
 
-        // receive SYN
-        byte[] data = new byte[mtu + 24];
-        DatagramPacket synPacket = new DatagramPacket(data, mtu + 24);
-        socket.receive(synPacket);
-        byte[] synData = synPacket.getData();
-        TCPsegment synSegment = new TCPsegment();
-        synSegment.deserialize(synData);
+                // receive SYN
+                byte[] data = new byte[mtu + 24];
+                DatagramPacket synPacket = new DatagramPacket(data, mtu + 24);
+                socket.receive(synPacket);
+                byte[] synData = synPacket.getData();
+                TCPsegment synSegment = new TCPsegment();
+                synSegment.deserialize(synData);
 
-        // checksum
-        short origChecksum = synSegment.getChecksum();
-        synSegment.resetChecksum();
-        synSegment.serialize();
-        short calcChecksum = synSegment.getChecksum();
+                // checksum
+                short origChecksum = synSegment.getChecksum();
+                synSegment.resetChecksum();
+                synSegment.serialize();
+                short calcChecksum = synSegment.getChecksum();
 
-        if (origChecksum != calcChecksum) {
-            TCPutil.numIncorrectChecksum++;
-            System.out.println("Checksum mismatch.");
-            return null;
-        }
-        if (synSegment.syn && !synSegment.ack && !synSegment.fin) {
-            TCPutil.getReceiverStatus(synSegment);
-            remoteIP = synPacket.getAddress();
-            remotePort = synPacket.getPort();
-            this.ackNumber++;
-            TCPutil.numPacketReceived++;
-        }
+                if (origChecksum != calcChecksum) {
+                    TCPutil.numIncorrectChecksum++;
+                    System.out.println("Checksum mismatch.");
+                    return null;
+                }
+                if (synSegment.isSyn() && !synSegment.isAck() && !synSegment.isFin()) {
+                    TCPutil.getReceiverStatus(synSegment);
+                    remoteIP = synPacket.getAddress();
+                    remotePort = synPacket.getPort();
+                    this.ackNumber++;
+                    TCPutil.numPacketReceived++;
+                }
 
-        boolean receivedAck = false;
+                boolean receivedAck = false;
 
-        while (!receivedAck) {
-            try {
-                // send SYN+ACK
-                TCPsegment handshakeSynAck = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-                        ConnectionState.SYN_ACK);
-                sendPacket(handshakeSynAck, remoteIP, remotePort);
-                this.sequenceNumber++;
+                while (!receivedAck) {
+                    try {
+                        // send SYN+ACK
+                        TCPsegment handshakeSynAck = TCPsegment.getConnectionSegment(this.sequenceNumber,
+                                this.ackNumber,
+                                ConnectionState.SYN_ACK);
+                        sendPacket(handshakeSynAck, remoteIP, remotePort);
+                        this.sequenceNumber++;
 
-                // receive ACK
-                do {
-                    socket.setSoTimeout(5000);
-                    ackSegment = handlePacket(this.mtu);
-                    if (ackSegment == null) {
-                        System.out.println("Checksum mismatch.");
+                        // receive ACK
+                        do {
+                            socket.setSoTimeout(5000);
+                            ackSegment = handlePacket(this.mtu);
+                            if (ackSegment == null) {
+                                System.out.println("Checksum mismatch.");
+                                continue;
+                            }
+
+                        } while (ackSegment.isSyn());
+
+                        if (ackSegment.isAck() && !ackSegment.isFin() && !ackSegment.isSyn()) {
+                            receivedAck = true;
+                        }
+                    } catch (SocketTimeoutException e) {
+                        System.out.println("Timeout for first ACK.");
+                        TCPutil.numRetransmission++;
+                        if (TCPutil.numRetransmission > 16) {
+                            System.exit(1);
+                        }
+                        this.sequenceNumber--;
                         continue;
                     }
-
-                } while (ackSegment.syn);
-
-                if (ackSegment.ack && !ackSegment.fin && !ackSegment.syn) {
-                    receivedAck = true;
                 }
-            } catch (SocketTimeoutException e) {
-                System.out.println("Timeout for first ACK.");
-                TCPutil.numRetransmission++;
-                if (TCPutil.numRetransmission > 16) {
-                    System.exit(1);
+
+                // if (ackSegment != null && ackSegment.dataSize >= 0) {
+                // return ackSegment;
+                // } else {
+                // return null;
+                // }
+
+                return ackSegment;
+            case "close":
+                boolean receivedLastAck = false;
+                short currNumRetransmits = 0;
+                while (!receivedLastAck) {
+
+                    TCPsegment returnFinAckSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber, ConnectionState.FIN_ACK);
+                    sendPacket(returnFinAckSegment, remoteIP, remotePort);
+                    this.sequenceNumber++;
+                    try {
+                        this.socket.setSoTimeout(5000);
+                        TCPsegment lastAckSegment;
+
+                        lastAckSegment = handlePacket(this.mtu);
+
+                        if (lastAckSegment == null) {
+                            System.out.println("Checksum mismatch.");
+                            continue;
+                        }
+
+                        if (lastAckSegment.isAck()) {
+                            receivedLastAck = true;
+
+                            // do not retransmit FIN
+                        } else if (lastAckSegment.isFin()) {
+                            this.sequenceNumber--;
+                            continue;
+
+                            // wrong flag
+                        } else {
+                            System.exit(1);
+                        }
+                    } catch (SocketTimeoutException e) {
+                        System.out.println("Timeout for last ACK.");
+                        currNumRetransmits++;
+                        if (currNumRetransmits > 16) {
+                            System.out.println("Reached maximum number of retransmissions.");
+                            return null;
+                        }
+                        TCPutil.numRetransmission++;
+                        this.sequenceNumber--;
+                    }
                 }
-                this.sequenceNumber--;
-                continue;
-            }
+                return null;
+            default:
+                return null;
+
         }
-
-        // if (ackSegment != null && ackSegment.dataSize >= 0) {
-        // return ackSegment;
-        // } else {
-        // return null;
-        // }
-
-        return ackSegment;
+        
     }
 
-    private void close(long currTime) throws IOException{
-        boolean receivedLastAck = false;
-        short currNumRetransmits = 0;
-        while (!receivedLastAck) {
+    // private void close(long currTime) throws IOException {
+    // boolean receivedLastAck = false;
+    // short currNumRetransmits = 0;
+    // while (!receivedLastAck) {
 
-            TCPsegment returnFinAckSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber, ConnectionState.FIN_ACK);
-            sendPacket(returnFinAckSegment, remoteIP, remotePort);
-            this.sequenceNumber++;
-            try {
-                this.socket.setSoTimeout(5000);
-                TCPsegment lastAckSegment;
-                
-                lastAckSegment = handlePacket(this.mtu);
-                
-                if (lastAckSegment == null) {
-                    System.out.println("Checksum mismatch.");
-                    continue;
-                }
+    // TCPsegment returnFinAckSegment =
+    // TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
+    // ConnectionState.FIN_ACK);
+    // sendPacket(returnFinAckSegment, remoteIP, remotePort);
+    // this.sequenceNumber++;
+    // try {
+    // this.socket.setSoTimeout(5000);
+    // TCPsegment lastAckSegment;
 
-                if (lastAckSegment.ack) {
-                    receivedLastAck = true;
+    // lastAckSegment = handlePacket(this.mtu);
 
-                // do not retransmit FIN
-                } else if (lastAckSegment.fin) {
-                    this.sequenceNumber--;
-                    continue;
-                    
-                // wrong flag
-                } else {
-                    System.exit(1);
-                }
-            } catch (SocketTimeoutException e) {
-                System.out.println("Timeout for last ACK.");
-                currNumRetransmits++;
-                if (currNumRetransmits > 16) {
-                    System.out.println("Reached maximum number of retransmissions.");
-                    return;
-                }
-                TCPutil.numRetransmission++;
-                this.sequenceNumber--;
-            }
-        }
-    }
+    // if (lastAckSegment == null) {
+    // System.out.println("Checksum mismatch.");
+    // continue;
+    // }
+
+    // if (lastAckSegment.ack) {
+    // receivedLastAck = true;
+
+    // // do not retransmit FIN
+    // } else if (lastAckSegment.fin) {
+    // this.sequenceNumber--;
+    // continue;
+
+    // // wrong flag
+    // } else {
+    // System.exit(1);
+    // }
+    // } catch (SocketTimeoutException e) {
+    // System.out.println("Timeout for last ACK.");
+    // currNumRetransmits++;
+    // if (currNumRetransmits > 16) {
+    // System.out.println("Reached maximum number of retransmissions.");
+    // return;
+    // }
+    // TCPutil.numRetransmission++;
+    // this.sequenceNumber--;
+    // }
+    // }
+    // }
 
 }

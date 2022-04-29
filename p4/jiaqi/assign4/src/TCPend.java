@@ -34,9 +34,9 @@ public class TCPend {
             TCPsender sender = new TCPsender(port, remoteIP, remotePort, fileName, mtu, sws);
 
             try {
-                sender.connect();
+                sender.handshake("connect");
                 sender.send();
-                sender.close();
+                sender.handshake("close");
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -67,7 +67,7 @@ public class TCPend {
                 boolean connected = false;
                 TCPsegment firstAckSegment = null;
                 while (!connected) {
-                    firstAckSegment = receiver.connect();
+                    firstAckSegment = receiver.handshake("connect", 0);
                     connected = true;
                 }
                 receiver.receive(firstAckSegment);

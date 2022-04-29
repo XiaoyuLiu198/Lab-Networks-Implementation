@@ -11,15 +11,15 @@ enum ConnectionState {
 
 public class TCPsegment implements Comparable<TCPsegment>{
 
-    public boolean syn;
-    public boolean ack;
-    public boolean fin;
-    public int sequenceNum;
-    public int ackNum;
-    public byte[] data;
-    public int dataSize;
-    public short checksum;
-    public long time;
+    private boolean syn;
+    private boolean ack;
+    private boolean fin;
+    private int sequenceNum;
+    private int ackNum;
+    private byte[] data;
+    private int dataSize;
+    private short checksum;
+    private long time;
 
     public TCPsegment(boolean syn, boolean ack, boolean fin, int sequenceNum, int ackNum, byte[] data, int dataSize) {
         this.syn = syn;
@@ -96,8 +96,8 @@ public class TCPsegment implements Comparable<TCPsegment>{
 
         byte[] segment = new byte[size];
         ByteBuffer bb = ByteBuffer.wrap(segment);
-        bb.putInt(sequenceNum);
-        bb.putInt(ackNum);
+        bb.putInt(this.sequenceNum);
+        bb.putInt(this.ackNum);
         bb.putLong(this.time);
 
         // set length and flags
@@ -148,10 +148,79 @@ public class TCPsegment implements Comparable<TCPsegment>{
         return this;
     }
 
+    public boolean isSyn() {
+        return syn;
+    }
+
+    public void setSyn(boolean syn) {
+        this.syn = syn;
+    }
+
+    public boolean isAck() {
+        return ack;
+    }
+
+    public void setAck(boolean ack) {
+        this.ack = ack;
+    }
+
+    public boolean isFin() {
+        return fin;
+    }
+
+    public void setFin(boolean fin) {
+        this.fin = fin;
+    }
+
+    public int getSequenceNum() {
+        return sequenceNum;
+    }
+
+    public void setSequenceNum(int sequenceNum) {
+        this.sequenceNum = sequenceNum;
+    }
+
+    public int getAckNum() {
+        return ackNum;
+    }
+
+    public void setAckNum(int ackNum) {
+        this.ackNum = ackNum;
+    }
+
+    public byte[] getData() {
+        return data;
+    }
+
+    public void setData(byte[] data) {
+        this.data = data;
+    }
+
+    public int getDataSize() {
+        return dataSize;
+    }
+
+    public void setDataSize(int dataSize) {
+        this.dataSize = dataSize;
+    }
+
     public short getChecksum() {
         return this.checksum;
     }
+
+    public void setChecksum(short checksum) {
+        this.checksum = checksum;
+    }
+
     public void resetChecksum() {
         this.checksum = 0;
+    }
+
+    public long getTime() {
+        return time;
+    }
+
+    public void setTime(long time) {
+        this.time = time;
     }
 }
