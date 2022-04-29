@@ -7,7 +7,8 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
+// import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.PriorityQueue;
 
 public class TCPreceiver extends TCPsocket {
@@ -28,7 +29,7 @@ public class TCPreceiver extends TCPsocket {
             boolean open = true;
 
             PriorityQueue<TCPsegment> receive = new PriorityQueue<>(sws);
-            ArrayList<Integer> sequenceNumbers = new ArrayList<>();
+            HashSet<Integer> sequenceNumbers = new HashSet<Integer>();
 
             if (ackSegment != null){
                 if(ackSegment.getDataSize() != 0){ // data size can not be 0
@@ -111,7 +112,7 @@ public class TCPreceiver extends TCPsocket {
                 this.socket = new DatagramSocket(port);
                 this.socket.setSoTimeout(0);
 
-                // receive SYN
+                // receive packet
                 byte[] data = new byte[mtu + 24];
                 DatagramPacket synPacket = new DatagramPacket(data, mtu + 24);
                 socket.receive(synPacket);
@@ -146,8 +147,7 @@ public class TCPreceiver extends TCPsocket {
                     try {
                         // send SYN+ACK
                         TCPsegment handshakeSynAck = TCPsegment.getConnectionSegment(this.sequenceNumber,
-                                this.ackNumber,
-                                ConnectionState.SYN_ACK);
+                                this.ackNumber,ConnectionState.SYN_ACK);
                         sendPacket(handshakeSynAck, remoteIP, remotePort);
                         this.sequenceNumber++;
 
