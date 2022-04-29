@@ -24,6 +24,7 @@ public class TCPsender extends TCPsocket {
             FileInputStream fis = new FileInputStream(fileName);
             BufferedInputStream bis = new BufferedInputStream(fis);
             DataInputStream dis = new DataInputStream(bis);
+            // construct data buffer
             byte[] data = new byte[mtu * sws];
 
             int currAckNum = 0;
@@ -33,19 +34,20 @@ public class TCPsender extends TCPsocket {
             int numByteRead = 0;
 
             dis.mark(mtu * sws);
-
-            while ((numByteRead = dis.read(data, 0, mtu * sws)) != -1) {
+            numByteRead = dis.read(data, 0, mtu * sws);
+            while (numByteRead > 0) {
+                numByteRead = dis.read(data, 0, mtu * sws);
                 numByteWritten += numByteRead;
 
                 for (int i = 0; i < (numByteRead / mtu + 1); i++) {
                     byte[] chunk;
                     int chunkSize;
                     if (i == numByteRead / mtu) {
-                        chunkSize = numByteRead % mtu;
-                        if (chunkSize != 0) {
+                        // chunkSize = numByteRead % mtu;
+                        if (numByteRead % mtu != 0) {
                             chunkSize = numByteRead % mtu;
                         } else {
-                            break;
+                            break; // all chuncks has been visited
                         }
                     } else {
                         chunkSize = mtu;
@@ -62,13 +64,14 @@ public class TCPsender extends TCPsocket {
 
                 while (currAckNum < TCPutil.numByteSent) {
                     try {
-                        TCPsegment currAckSegment = handlePacket(this.mtu);
+                        TCPsegment currAckSegment = handlePacket(this.mtu); // get tcp response after sending attempt
                         if (currAckSegment == null) {
                             continue;
                         }
 
-                        this.socket.setSoTimeout((int) (TCPutil.timeout / 1E6));
+                        this.socket.setSoTimeout((int) (TCPutil.timeout / 1E6)); // TODO: unit correct? before checking dup?
 
+                        // duplicate ack
                         int prevAck = currAckNum;
                         currAckNum = currAckSegment.getAckNum() - 1;
 
@@ -78,7 +81,7 @@ public class TCPsender extends TCPsocket {
                             if (currDuplicateAck == 3) {
                                 if (currRetransmit > 16) {
                                     System.out.println("Reached maximum number of retransmissions.");
-                                    return;
+                                    return; // TODO: Should we just exit or also print messages
                                 }
 
                                 // slidingWindow(dis, currAckNum, numByteWritten, numByteRead);

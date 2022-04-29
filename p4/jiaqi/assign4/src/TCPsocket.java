@@ -33,9 +33,10 @@ public class TCPsocket {
             return null;
         }
 
-        // compute timeout
+        // compute timeout TODO: DO we need to always calculate timeout?
         if (segment.isAck() && segment.getDataSize() == 0) {
             TCPutil.getTimeout(segment.getSequenceNum(), segment.getTime());
+        
         }
 
         TCPutil.numPacketReceived++;

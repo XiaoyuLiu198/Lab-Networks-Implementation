@@ -186,12 +186,6 @@ public class TCPreceiver extends TCPsocket {
                     }
                 }
 
-                // if (ackSegment != null && ackSegment.dataSize >= 0) {
-                // return ackSegment;
-                // } else {
-                // return null;
-                // }
-
                 return ackSegment;
             case "close":
                 boolean receivedLastAck = false;
@@ -242,51 +236,4 @@ public class TCPreceiver extends TCPsocket {
         }
         
     }
-
-    // private void close(long currTime) throws IOException {
-    // boolean receivedLastAck = false;
-    // short currNumRetransmits = 0;
-    // while (!receivedLastAck) {
-
-    // TCPsegment returnFinAckSegment =
-    // TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-    // ConnectionState.FIN_ACK);
-    // sendPacket(returnFinAckSegment, remoteIP, remotePort);
-    // this.sequenceNumber++;
-    // try {
-    // this.socket.setSoTimeout(5000);
-    // TCPsegment lastAckSegment;
-
-    // lastAckSegment = handlePacket(this.mtu);
-
-    // if (lastAckSegment == null) {
-    // System.out.println("Checksum mismatch.");
-    // continue;
-    // }
-
-    // if (lastAckSegment.ack) {
-    // receivedLastAck = true;
-
-    // // do not retransmit FIN
-    // } else if (lastAckSegment.fin) {
-    // this.sequenceNumber--;
-    // continue;
-
-    // // wrong flag
-    // } else {
-    // System.exit(1);
-    // }
-    // } catch (SocketTimeoutException e) {
-    // System.out.println("Timeout for last ACK.");
-    // currNumRetransmits++;
-    // if (currNumRetransmits > 16) {
-    // System.out.println("Reached maximum number of retransmissions.");
-    // return;
-    // }
-    // TCPutil.numRetransmission++;
-    // this.sequenceNumber--;
-    // }
-    // }
-    // }
-
 }
