@@ -1,15 +1,16 @@
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 public class TCPend {
     public static void main(String[] args) throws UnknownHostException {
-        short port = -1;              // port number at which sender/client will run
-        InetAddress remoteIP = null;  // IP address of receiver/host
-        short remotePort = -1;        // port at which the remote receiver/host is running
-        String fileName = null;       // file to be sent
-        int mtu = -1;                 // maximum transmission unit (bytes)
-        int sws = -1;                 // sliding window size (number of segments)
-        
+        short port = -1; // port number at which sender/client will run
+        InetAddress remoteIP = null; // IP address of receiver/host
+        short remotePort = -1; // port at which the remote receiver/host is running
+        String fileName = null; // file to be sent
+        int mtu = -1; // maximum transmission unit (bytes)
+        int sws = -1; // sliding window size (number of segments)
+
         if (args.length == 12) {
             for (int i = 0; i < args.length; i++) {
                 String arg = args[i];
@@ -37,6 +38,10 @@ public class TCPend {
                 sender.handshake("connect");
                 sender.send();
                 sender.handshake("close");
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -71,6 +76,10 @@ public class TCPend {
                     connected = true;
                 }
                 receiver.receive(firstAckSegment);
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {

@@ -19,7 +19,7 @@ public class TCPsender extends TCPsocket {
         this.sws = sws;
     }
 
-    public void send() {
+    public void send() throws IllegalArgumentException {
         try {
             FileInputStream fis = new FileInputStream(fileName);
             BufferedInputStream bis = new BufferedInputStream(fis);
@@ -77,11 +77,9 @@ public class TCPsender extends TCPsocket {
                             TCPutil.numDuplicateAck++;
                             if (currDuplicateAck == 3) {
                                 if (currRetransmit > 16) {
-                                    System.out.println("Reached maximum number of retransmissions.");
-                                    return;
+                                    throw new IllegalArgumentException("Reached maximum number of retransmissions");
                                 }
 
-                                // slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
                                 dis.reset();
                                 dis.skip(currAckNum - (numByteWritten - numByteRead));
                                 this.sequenceNumber = currAckNum + 1;
@@ -98,10 +96,9 @@ public class TCPsender extends TCPsocket {
                     } catch (SocketTimeoutException e) {
                         System.out.println("Timeout for SYN+ACK.");
                         if (currRetransmit > 16) {
-                            System.out.println("Reached maximum number of retransmissions.");
-                            return;
+                            throw new IllegalArgumentException("Reached maximum number of retransmissions");
                         }
-                        // slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
+
                         dis.reset();
                         dis.skip(currAckNum - (numByteWritten - numByteRead));
                         this.sequenceNumber = currAckNum + 1;
@@ -123,7 +120,7 @@ public class TCPsender extends TCPsocket {
         }
     }
 
-    public void handshake(String type) throws IOException {
+    public void handshake(String type) throws IOException, IllegalArgumentException {
         switch (type) {
             case "connect":
                 boolean receivedSynAck = false;
@@ -132,8 +129,7 @@ public class TCPsender extends TCPsocket {
 
                 while (!receivedSynAck) {
                     // send SYN
-                    TCPsegment synSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-                            ConnectionState.SYN);
+                    TCPsegment synSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber, ConnectionState.SYN);
                     sendPacket(synSegment, remoteIP, remotePort);
                     this.sequenceNumber++;
 
@@ -148,24 +144,21 @@ public class TCPsender extends TCPsocket {
                         if (synAckSegment.isSyn() && synAckSegment.isAck()) {
                             this.ackNumber++;
                             receivedSynAck = true;
-                            TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-                                    ConnectionState.ACK);
+                            TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber, ConnectionState.ACK);
                             sendPacket(ackSegment, remoteIP, remotePort);
                         } else {
                             TCPutil.numRetransmission++;
                             if (TCPutil.numRetransmission > 16) { // default max number of retransmissions
-                                System.out.println("Reached maximum number of retransmissions.");
-                                return;
+                                throw new IllegalArgumentException("Reached maximum number of retransmissions");
                             }
                             this.sequenceNumber--;
                             continue;
                         }
                     } catch (SocketTimeoutException e) {
-                        System.out.println("Timeout for ACK.");
+                        System.out.println("Timeout for SYN+ACK.");
                         TCPutil.numRetransmission++;
-                        if (TCPutil.numRetransmission > 16) {
-                            System.out.println("Reached maximum number of retransmissions.");
-                            return;
+                        if (TCPutil.numRetransmission % 17 == 0) {  // FIX
+                            throw new IllegalArgumentException("Reached maximum number of retransmissions");
                         }
                         this.sequenceNumber--;
                         continue;
@@ -179,8 +172,7 @@ public class TCPsender extends TCPsocket {
                 int currRetransmit = 0;
                 // send FIN
                 while (!receivedFinAck) {
-                    TCPsegment finSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-                            ConnectionState.FIN);
+                    TCPsegment finSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber, ConnectionState.FIN);
                     sendPacket(finSegment, remoteIP, remotePort);
                     this.sequenceNumber++;
 
@@ -189,7 +181,7 @@ public class TCPsender extends TCPsocket {
                         TCPsegment finAckSegment = null;
                         do {
                             finAckSegment = handlePacket(this.mtu);
-                            if (finAckSegment == null) {
+                            if (finAckSegment == null) {  // checksum mismatch
                                 this.sequenceNumber--;
                                 continue;
                             }
@@ -198,16 +190,16 @@ public class TCPsender extends TCPsocket {
                         if (finAckSegment.isFin() && finAckSegment.isAck() && !finAckSegment.isSyn()) {
                             this.ackNumber++;
                             receivedFinAck = true;
-                            TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-                                    ConnectionState.ACK);
+                            TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber, ConnectionState.ACK);
                             sendPacket(ackSegment, remoteIP, remotePort);
+                        } else {  // wrong flag
+                            throw new IllegalArgumentException("Encountered wrong flags. ");
                         }
                     } catch (SocketTimeoutException e) {
                         System.out.println("Timeout for ACK.");
                         currRetransmit++;
                         if (currRetransmit > 16) {
-                            System.out.println("Reached maximum number of retransmissions.");
-                            return;
+                            throw new IllegalArgumentException("Reached maximum number of retransmissions");
                         }
                         TCPutil.numRetransmission++;
                         this.sequenceNumber--;
