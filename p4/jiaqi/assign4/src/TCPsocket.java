@@ -34,8 +34,8 @@ public class TCPsocket {
         }
 
         // compute timeout
-        if (segment.ack && segment.dataSize == 0) {
-            TCPutil.getTimeout(segment.sequenceNum, segment.time);
+        if (segment.isAck() && segment.getDataSize() == 0) {
+            TCPutil.getTimeout(segment.getSequenceNum(), segment.getTime());
         }
 
         TCPutil.numPacketReceived++;

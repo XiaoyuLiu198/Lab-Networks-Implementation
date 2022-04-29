@@ -27,21 +27,21 @@ public class TCPutil {
     }
 
     public static void getSenderStatus(TCPsegment segment) {
-        char SYN = segment.syn ? 'S' : '-';
-        char ACK = segment.ack ? 'A' : '-';
-        char FIN = segment.fin ? 'F' : '-';
-        char data = (segment.data.length != 0) ? 'D' : '-';
+        char SYN = segment.isSyn() ? 'S' : '-';
+        char ACK = segment.isAck() ? 'A' : '-';
+        char FIN = segment.isFin() ? 'F' : '-';
+        char data = (segment.getDataSize() != 0) ? 'D' : '-';
         System.out.println(String.format("snd %.3f %c %c %c %c %d %d %d",
-                segment.time / 1E9, SYN, ACK, FIN, data, segment.sequenceNum, segment.data.length, segment.ackNum));
+                segment.getTime() / 1E9, SYN, ACK, FIN, data, segment.getSequenceNum(), segment.getDataSize(), segment.getAckNum()));
     }
 
     public static void getReceiverStatus(TCPsegment segment) {
-        char SYN = segment.syn ? 'S' : '-';
-        char ACK = segment.ack ? 'A' : '-';
-        char FIN = segment.fin ? 'F' : '-';
-        char data = (segment.data.length != 0) ? 'D' : '-';
+        char SYN = segment.isSyn() ? 'S' : '-';
+        char ACK = segment.isAck() ? 'A' : '-';
+        char FIN = segment.isFin() ? 'F' : '-';
+        char data = (segment.getDataSize() != 0) ? 'D' : '-';
         System.out.println(String.format("rcv %.3f %c %c %c %c %d %d %d",
-                segment.time / 1E9, SYN, ACK, FIN, data, segment.sequenceNum, segment.data.length, segment.ackNum));
+                segment.getTime() / 1E9, SYN, ACK, FIN, data, segment.getSequenceNum(), segment.getDataSize(), segment.getAckNum()));
     }
 
     public static void getStatistics() {
