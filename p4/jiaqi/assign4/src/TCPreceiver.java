@@ -7,7 +7,8 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
-import java.util.HashSet;
+import java.util.ArrayList;
+// import java.util.HashSet;
 import java.util.PriorityQueue;
 
 public class TCPreceiver extends TCPsocket {
@@ -27,13 +28,16 @@ public class TCPreceiver extends TCPsocket {
             DataOutputStream dos = new DataOutputStream(out);
             boolean open = true;
 
-            // out of sequence
             PriorityQueue<TCPsegment> receive = new PriorityQueue<>(sws);
-            HashSet<Integer> sequenceNumbers = new HashSet<>();
+            ArrayList<Integer> sequenceNumbers = new ArrayList<>();
 
-            if (ackSegment != null && ackSegment.isAck() && ackSegment.getDataSize() > 0) {
-                receive.add(ackSegment);
-                sequenceNumbers.add(ackSegment.getSequenceNum());
+            if (ackSegment != null){
+                if(ackSegment.getDataSize() != 0){ // data size can not be 0
+                    if(ackSegment.isAck()) {
+                        receive.add(ackSegment);
+                        sequenceNumbers.add(ackSegment.getSequenceNum());
+                    }
+                }
             }
 
             while (open) {  // receive data
@@ -41,16 +45,16 @@ public class TCPreceiver extends TCPsocket {
                 dataSegment = handlePacket(this.mtu);
 
                 if (dataSegment == null) {
-                    System.out.println("Checksum mismatch.");
+                    System.out.println("empty tcp segment received");
                     continue;
                 }
 
                 long currTime = dataSegment.getTime();
                 int currSequenceNum = dataSegment.getSequenceNum();
 
-                if (currSequenceNum < this.ackNumber) {
+                if (currSequenceNum < this.ackNumber) { 
                     TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
-                    sendPacket(currAckSegment, remoteIP, remotePort);
+                    sendPacket(currAckSegment, remoteIP, remotePort); // retransmitt now TODO: Retransmitt here?
                     TCPutil.numOutofSequence++;
                     continue;
                 } else {  // add to queue
@@ -62,7 +66,7 @@ public class TCPreceiver extends TCPsocket {
                     }
 
                     while (!receive.isEmpty()) {
-                        TCPsegment firstSegment = receive.peek();
+                        TCPsegment firstSegment = receive.peek(); 
                         if (firstSegment.getSequenceNum() == this.ackNumber) {
                             if (!firstSegment.isAck() || firstSegment.getDataSize() <= 0) {  // end if no more data
                                 if (firstSegment.isFin()) {
@@ -76,15 +80,15 @@ public class TCPreceiver extends TCPsocket {
                                 dos.write(firstSegment.getData());
 
                                 this.ackNumber += firstSegment.getDataSize();
-                                TCPutil.numByteReceived += firstSegment.getDataSize();
                                 TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber,
                                         this.ackNumber, currTime);
                                 sendPacket(currAckSegment, remoteIP, remotePort);
                                 sequenceNumbers.remove(firstSegment.getSequenceNum());
                                 receive.remove(firstSegment);
+                                TCPutil.numByteReceived += firstSegment.getDataSize();
                             }
                         } else {
-                            // send duplicate ACK
+                            // send duplicate ACK as original ACK
                             TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber,
                                     currTime);
                             sendPacket(currAckSegment, remoteIP, remotePort);
@@ -127,12 +131,14 @@ public class TCPreceiver extends TCPsocket {
                     System.out.println("Checksum mismatch.");
                     return null;
                 }
-                if (synSegment.isSyn() && !synSegment.isAck() && !synSegment.isFin()) {
-                    TCPutil.getReceiverStatus(synSegment);
-                    remoteIP = synPacket.getAddress();
-                    remotePort = synPacket.getPort();
-                    this.ackNumber++;
-                    TCPutil.numPacketReceived++;
+                if (synSegment.isSyn()){
+                    if(!synSegment.isAck() && !synSegment.isFin()) {
+                        TCPutil.getReceiverStatus(synSegment);
+                        remoteIP = synPacket.getAddress();
+                        remotePort = synPacket.getPort();
+                        this.ackNumber++;
+                        TCPutil.numPacketReceived++;
+                    }
                 }
 
                 boolean receivedAck = false;

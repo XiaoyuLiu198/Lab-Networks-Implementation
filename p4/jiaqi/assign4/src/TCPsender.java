@@ -34,16 +34,16 @@ public class TCPsender extends TCPsocket {
             int numByteRead = 0;
 
             dis.mark(mtu * sws);
-            numByteRead = dis.read(data, 0, mtu * sws);
+            numByteRead = dis.read(data, 0, mtu * sws); // single buffer
             while (numByteRead > 0) {
                 numByteRead = dis.read(data, 0, mtu * sws);
                 numByteWritten += numByteRead;
+                int lastIdx = numByteRead / mtu;
 
                 for (int i = 0; i < (numByteRead / mtu + 1); i++) {
                     byte[] chunk;
                     int chunkSize;
-                    if (i == numByteRead / mtu) {
-                        // chunkSize = numByteRead % mtu;
+                    if (i == lastIdx) {
                         if (numByteRead % mtu != 0) {
                             chunkSize = numByteRead % mtu;
                         } else {
@@ -58,11 +58,11 @@ public class TCPsender extends TCPsocket {
                     TCPsegment dataSegment = TCPsegment.getDataSegment(this.sequenceNumber, this.ackNumber, chunk);
                     sendPacket(dataSegment, remoteIP, remotePort);
 
+                    TCPutil.numByteSent += chunkSize; // update overall stats
                     this.sequenceNumber += chunkSize;
-                    TCPutil.numByteSent += chunkSize;
                 }
 
-                while (currAckNum < TCPutil.numByteSent) {
+                while (currAckNum != TCPutil.numByteSent) {
                     try {
                         TCPsegment currAckSegment = handlePacket(this.mtu); // get tcp response after sending attempt
                         if (currAckSegment == null) {
