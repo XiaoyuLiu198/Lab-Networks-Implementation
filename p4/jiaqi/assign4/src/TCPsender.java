@@ -36,7 +36,6 @@ public class TCPsender extends TCPsocket {
             dis.mark(mtu * sws);
             numByteRead = dis.read(data, 0, mtu * sws); // single buffer
             while (numByteRead > 0) {
-                numByteRead = dis.read(data, 0, mtu * sws);
                 numByteWritten += numByteRead;
                 int lastIdx = numByteRead / mtu;
 
@@ -115,6 +114,7 @@ public class TCPsender extends TCPsocket {
                     currRetransmit = 0;  // reset counter for current segment
                 }
                 bis.mark(mtu * sws);
+                numByteRead = dis.read(data, 0, mtu * sws);
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
