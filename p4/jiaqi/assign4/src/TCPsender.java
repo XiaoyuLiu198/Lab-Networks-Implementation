@@ -34,7 +34,7 @@ public class TCPsender extends TCPsocket {
 
             dis.mark(mtu * sws);
 
-            while ((numByteRead = dis.read(data, 0, mtu * sws)) != -1) {
+            while ((numByteRead = dis.read(data, 0, mtu * sws)) != -1) {  // put data to sent into buffer
                 numByteWritten += numByteRead;
 
                 for (int i = 0; i < (numByteRead / mtu + 1); i++) {
@@ -72,7 +72,7 @@ public class TCPsender extends TCPsocket {
                         int prevAck = currAckNum;
                         currAckNum = currAckSegment.getAckNum() - 1;
 
-                        if (prevAck == currAckNum) {
+                        if (prevAck == currAckNum) {  // fast retransmit
                             currDuplicateAck++;
                             TCPutil.numDuplicateAck++;
                             if (currDuplicateAck == 3) {
@@ -80,15 +80,13 @@ public class TCPsender extends TCPsocket {
                                     System.out.println("Reached maximum number of retransmissions.");
                                     return;
                                 }
-
-                                // slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
+                                // sliding window
                                 dis.reset();
                                 dis.skip(currAckNum - (numByteWritten - numByteRead));
                                 this.sequenceNumber = currAckNum + 1;
                                 TCPutil.numByteSent = currAckNum;
                                 TCPutil.numRetransmission++;
                                 numByteWritten = TCPutil.numByteSent;
-
                                 currRetransmit++;
                                 break;
                             }
@@ -101,18 +99,17 @@ public class TCPsender extends TCPsocket {
                             System.out.println("Reached maximum number of retransmissions.");
                             return;
                         }
-                        // slidingWindow(dis, currAckNum, numByteWritten, numByteRead);
+                        // sliding window
                         dis.reset();
                         dis.skip(currAckNum - (numByteWritten - numByteRead));
                         this.sequenceNumber = currAckNum + 1;
                         TCPutil.numByteSent = currAckNum;
                         TCPutil.numRetransmission++;
-
                         numByteWritten = TCPutil.numByteSent;
                         currRetransmit++;
                         break;
                     }
-                    currRetransmit = 0;
+                    currRetransmit = 0;  // reset counter for current segment
                 }
                 bis.mark(mtu * sws);
             }

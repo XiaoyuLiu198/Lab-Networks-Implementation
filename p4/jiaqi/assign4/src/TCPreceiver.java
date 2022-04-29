@@ -32,12 +32,11 @@ public class TCPreceiver extends TCPsocket {
             HashSet<Integer> sequenceNumbers = new HashSet<>();
 
             if (ackSegment != null && ackSegment.isAck() && ackSegment.getDataSize() > 0) {
-                // if handshake ACK is lost, then the first ACK might contain data.
                 receive.add(ackSegment);
                 sequenceNumbers.add(ackSegment.getSequenceNum());
             }
 
-            while (open) {
+            while (open) {  // receive data
                 TCPsegment dataSegment;
                 dataSegment = handlePacket(this.mtu);
 
@@ -47,27 +46,14 @@ public class TCPreceiver extends TCPsocket {
                 }
 
                 long currTime = dataSegment.getTime();
-
                 int currSequenceNum = dataSegment.getSequenceNum();
-                // int outsideSws = this.ackNumber + (sws * mtu);
-
-                // check received packet within sws or not
-                // if (currSequenceNum >= outsideSws) {
-                // // out of sequence packets (outside sliding window size)
-                // TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber,
-                // this.ackNumber, currTime);
-                // sendPacket(currAckSegment, remoteIP, remotePort);
-                // TCPutil.numOutofSequence++;
-                // continue;
-                // } else
 
                 if (currSequenceNum < this.ackNumber) {
                     TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
                     sendPacket(currAckSegment, remoteIP, remotePort);
                     TCPutil.numOutofSequence++;
                     continue;
-                } else {
-
+                } else {  // add to queue
                     if (!sequenceNumbers.contains(currSequenceNum)) {
                         sequenceNumbers.add(currSequenceNum);
                         receive.add(dataSegment);
@@ -77,9 +63,8 @@ public class TCPreceiver extends TCPsocket {
 
                     while (!receive.isEmpty()) {
                         TCPsegment firstSegment = receive.peek();
-
                         if (firstSegment.getSequenceNum() == this.ackNumber) {
-                            if (!firstSegment.isAck() || firstSegment.getDataSize() <= 0) {
+                            if (!firstSegment.isAck() || firstSegment.getDataSize() <= 0) {  // end if no more data
                                 if (firstSegment.isFin()) {
                                     dos.close();
                                     handshake("close", currTime);
@@ -87,7 +72,7 @@ public class TCPreceiver extends TCPsocket {
                                     sequenceNumbers.remove(firstSegment.getSequenceNum());
                                     open = false;
                                 }
-                            } else {
+                            } else {  // send and write file, send ACK
                                 dos.write(firstSegment.getData());
 
                                 this.ackNumber += firstSegment.getDataSize();
@@ -185,14 +170,8 @@ public class TCPreceiver extends TCPsocket {
                         continue;
                     }
                 }
-
-                // if (ackSegment != null && ackSegment.dataSize >= 0) {
-                // return ackSegment;
-                // } else {
-                // return null;
-                // }
-
                 return ackSegment;
+
             case "close":
                 boolean receivedLastAck = false;
                 short currNumRetransmits = 0;
@@ -236,57 +215,9 @@ public class TCPreceiver extends TCPsocket {
                     }
                 }
                 return null;
+            
             default:
                 return null;
-
         }
-        
     }
-
-    // private void close(long currTime) throws IOException {
-    // boolean receivedLastAck = false;
-    // short currNumRetransmits = 0;
-    // while (!receivedLastAck) {
-
-    // TCPsegment returnFinAckSegment =
-    // TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-    // ConnectionState.FIN_ACK);
-    // sendPacket(returnFinAckSegment, remoteIP, remotePort);
-    // this.sequenceNumber++;
-    // try {
-    // this.socket.setSoTimeout(5000);
-    // TCPsegment lastAckSegment;
-
-    // lastAckSegment = handlePacket(this.mtu);
-
-    // if (lastAckSegment == null) {
-    // System.out.println("Checksum mismatch.");
-    // continue;
-    // }
-
-    // if (lastAckSegment.ack) {
-    // receivedLastAck = true;
-
-    // // do not retransmit FIN
-    // } else if (lastAckSegment.fin) {
-    // this.sequenceNumber--;
-    // continue;
-
-    // // wrong flag
-    // } else {
-    // System.exit(1);
-    // }
-    // } catch (SocketTimeoutException e) {
-    // System.out.println("Timeout for last ACK.");
-    // currNumRetransmits++;
-    // if (currNumRetransmits > 16) {
-    // System.out.println("Reached maximum number of retransmissions.");
-    // return;
-    // }
-    // TCPutil.numRetransmission++;
-    // this.sequenceNumber--;
-    // }
-    // }
-    // }
-
 }
