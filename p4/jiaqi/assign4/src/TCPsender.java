@@ -128,7 +128,7 @@ public class TCPsender extends TCPsocket {
             case "connect":
                 boolean receivedSynAck = false;
                 this.socket = new DatagramSocket();
-                this.socket.setSoTimeout(5000); // default 5 seconds timeout
+                this.socket.setSoTimeout(5000); // initiate 5 seconds timeout
 
                 while (!receivedSynAck) {
                     // send SYN
@@ -195,12 +195,14 @@ public class TCPsender extends TCPsocket {
                             }
                         } while (finAckSegment.isAck() && !finAckSegment.isFin() && !finAckSegment.isSyn());
 
-                        if (finAckSegment.isFin() && finAckSegment.isAck() && !finAckSegment.isSyn()) {
-                            this.ackNumber++;
-                            receivedFinAck = true;
-                            TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-                                    ConnectionState.ACK);
-                            sendPacket(ackSegment, remoteIP, remotePort);
+                        if (finAckSegment.isFin()){
+                            if(finAckSegment.isAck() && !finAckSegment.isSyn()) {
+                                this.ackNumber++;
+                                receivedFinAck = true;
+                                TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
+                                        ConnectionState.ACK);
+                                sendPacket(ackSegment, remoteIP, remotePort);
+                            }
                         }
                     } catch (SocketTimeoutException e) {
                         System.out.println("Timeout for ACK.");

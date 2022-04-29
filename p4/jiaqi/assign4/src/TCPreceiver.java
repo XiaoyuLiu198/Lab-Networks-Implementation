@@ -8,7 +8,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
-// import java.util.HashSet;
 import java.util.PriorityQueue;
 
 public class TCPreceiver extends TCPsocket {
@@ -205,7 +204,6 @@ public class TCPreceiver extends TCPsocket {
                             this.sequenceNumber--;
                             continue;
 
-                            // wrong flag
                         } else {
                             System.exit(1);
                         }
