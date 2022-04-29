@@ -105,7 +105,7 @@ public class TCPsender extends TCPsocket {
                                     // this.sequenceNumber = currAckNum + 1;
                                     // TCPutil.numByteSent = currAckNum;
                                     sendPacket(dataSegment, remoteIP, remotePort);
-                                    currAckSegment = handlePacket(this.mtu); 
+                                    // currAckSegment = handlePacket(this.mtu); 
                                     TCPutil.numRetransmission++;
                                     // numByteWritten = TCPutil.numByteSent;
                                     currRetransmit++;
