@@ -170,7 +170,7 @@ public class TCPreceiver extends TCPsocket {
                         continue;
                     }
                 }
-            return ackSegment;
+                return ackSegment;
 
             case "close":
                 boolean receivedLastAck = false;

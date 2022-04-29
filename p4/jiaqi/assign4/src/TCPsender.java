@@ -37,7 +37,6 @@ public class TCPsender extends TCPsocket {
             numByteRead = dis.read(data, 0, mtu * sws);
             while (numByteRead > 0) {
                 numByteRead = dis.read(data, 0, mtu * sws);
-
                 numByteWritten += numByteRead;
 
                 for (int i = 0; i < (numByteRead / mtu + 1); i++) {
