@@ -47,14 +47,27 @@ public class TCPreceiver extends TCPsocket {
                 }
 
                 long currTime = dataSegment.getTime();
+
                 int currSequenceNum = dataSegment.getSequenceNum();
+                // int outsideSws = this.ackNumber + (sws * mtu);
+
+                // check received packet within sws or not
+                // if (currSequenceNum >= outsideSws) {
+                // // out of sequence packets (outside sliding window size)
+                // TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber,
+                // this.ackNumber, currTime);
+                // sendPacket(currAckSegment, remoteIP, remotePort);
+                // TCPutil.numOutofSequence++;
+                // continue;
+                // } else
 
                 if (currSequenceNum < this.ackNumber) {
                     TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
                     sendPacket(currAckSegment, remoteIP, remotePort);
                     TCPutil.numOutofSequence++;
                     continue;
-                } else {  // within sliding window
+                } else {
+
                     if (!sequenceNumbers.contains(currSequenceNum)) {
                         sequenceNumbers.add(currSequenceNum);
                         receive.add(dataSegment);
@@ -64,31 +77,31 @@ public class TCPreceiver extends TCPsocket {
 
                     while (!receive.isEmpty()) {
                         TCPsegment firstSegment = receive.peek();
+
                         if (firstSegment.getSequenceNum() == this.ackNumber) {
-                            if (!firstSegment.isAck() || firstSegment.getDataSize() <= 0) {  // end if no data left
+                            if (!firstSegment.isAck() || firstSegment.getDataSize() <= 0) {
                                 if (firstSegment.isFin()) {
                                     dos.close();
                                     handshake("close", currTime);
                                     receive.remove(firstSegment);
                                     sequenceNumbers.remove(firstSegment.getSequenceNum());
                                     open = false;
-                                } else {
-                                    throw new IllegalArgumentException("Encountered wrong flags. ");
                                 }
-                            } else {  // send data and ACK
+                            } else {
                                 dos.write(firstSegment.getData());
 
                                 this.ackNumber += firstSegment.getDataSize();
                                 TCPutil.numByteReceived += firstSegment.getDataSize();
-
-                                TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
+                                TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber,
+                                        this.ackNumber, currTime);
                                 sendPacket(currAckSegment, remoteIP, remotePort);
                                 sequenceNumbers.remove(firstSegment.getSequenceNum());
                                 receive.remove(firstSegment);
                             }
                         } else {
                             // send duplicate ACK
-                            TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
+                            TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber,
+                                    currTime);
                             sendPacket(currAckSegment, remoteIP, remotePort);
                             break;
                         }
@@ -99,12 +112,10 @@ public class TCPreceiver extends TCPsocket {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
-    public TCPsegment handshake(String type, long currTime) throws IOException, IllegalArgumentException {
+    public TCPsegment handshake(String type, long currTime) throws IOException {
         switch (type) {
             case "connect":
                 TCPsegment ackSegment = null;
@@ -167,15 +178,21 @@ public class TCPreceiver extends TCPsocket {
                     } catch (SocketTimeoutException e) {
                         System.out.println("Timeout for first ACK.");
                         TCPutil.numRetransmission++;
-                        if (TCPutil.numRetransmission % 17 == 0) {
-                            throw new IllegalArgumentException("Reached maximum number of retransmissions");
+                        if (TCPutil.numRetransmission > 16) {
+                            System.exit(1);
                         }
                         this.sequenceNumber--;
                         continue;
                     }
                 }
-                return ackSegment;
 
+                // if (ackSegment != null && ackSegment.dataSize >= 0) {
+                // return ackSegment;
+                // } else {
+                // return null;
+                // }
+
+                return ackSegment;
             case "close":
                 boolean receivedLastAck = false;
                 short currNumRetransmits = 0;
@@ -205,24 +222,71 @@ public class TCPreceiver extends TCPsocket {
 
                             // wrong flag
                         } else {
-                            throw new IllegalArgumentException("Encountered wrong flags");
+                            System.exit(1);
                         }
                     } catch (SocketTimeoutException e) {
                         System.out.println("Timeout for last ACK.");
                         currNumRetransmits++;
                         if (currNumRetransmits > 16) {
-                            throw new IllegalArgumentException("Reached maximum number of retransmissions");
+                            System.out.println("Reached maximum number of retransmissions.");
+                            return null;
                         }
                         TCPutil.numRetransmission++;
                         this.sequenceNumber--;
-                    } catch (Exception e) {
-                        e.printStackTrace();
                     }
                 }
                 return null;
-
             default:
                 return null;
-        } 
+
+        }
+        
     }
+
+    // private void close(long currTime) throws IOException {
+    // boolean receivedLastAck = false;
+    // short currNumRetransmits = 0;
+    // while (!receivedLastAck) {
+
+    // TCPsegment returnFinAckSegment =
+    // TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
+    // ConnectionState.FIN_ACK);
+    // sendPacket(returnFinAckSegment, remoteIP, remotePort);
+    // this.sequenceNumber++;
+    // try {
+    // this.socket.setSoTimeout(5000);
+    // TCPsegment lastAckSegment;
+
+    // lastAckSegment = handlePacket(this.mtu);
+
+    // if (lastAckSegment == null) {
+    // System.out.println("Checksum mismatch.");
+    // continue;
+    // }
+
+    // if (lastAckSegment.ack) {
+    // receivedLastAck = true;
+
+    // // do not retransmit FIN
+    // } else if (lastAckSegment.fin) {
+    // this.sequenceNumber--;
+    // continue;
+
+    // // wrong flag
+    // } else {
+    // System.exit(1);
+    // }
+    // } catch (SocketTimeoutException e) {
+    // System.out.println("Timeout for last ACK.");
+    // currNumRetransmits++;
+    // if (currNumRetransmits > 16) {
+    // System.out.println("Reached maximum number of retransmissions.");
+    // return;
+    // }
+    // TCPutil.numRetransmission++;
+    // this.sequenceNumber--;
+    // }
+    // }
+    // }
+
 }
