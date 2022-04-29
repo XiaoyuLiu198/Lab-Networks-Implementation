@@ -9,7 +9,9 @@ import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 // import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.PriorityQueue;
+import java.util.LinkedList;
+// import java.util.PriorityQueue;
+import java.util.Queue;
 
 public class TCPreceiver extends TCPsocket {
     private InetAddress remoteIP;
@@ -28,7 +30,8 @@ public class TCPreceiver extends TCPsocket {
             DataOutputStream dos = new DataOutputStream(out);
             boolean open = true;
 
-            PriorityQueue<TCPsegment> receive = new PriorityQueue<>(sws);
+            // PriorityQueue<TCPsegment> receive = new PriorityQueue<>(sws);
+            Queue<TCPsegment> receive = new LinkedList<>();
             HashSet<Integer> sequenceNumbers = new HashSet<Integer>();
 
             if (ackSegment != null){
@@ -110,7 +113,7 @@ public class TCPreceiver extends TCPsocket {
                 TCPsegment ackSegment = null;
 
                 this.socket = new DatagramSocket(port);
-                this.socket.setSoTimeout(0);
+                this.socket.setSoTimeout(5000);
 
                 // receive packet
                 byte[] data = new byte[mtu + 24];
