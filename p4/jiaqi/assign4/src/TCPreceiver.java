@@ -9,7 +9,9 @@ import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 // import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.PriorityQueue;
+import java.util.Queue;
 
 public class TCPreceiver extends TCPsocket {
     private InetAddress remoteIP;
@@ -28,7 +30,7 @@ public class TCPreceiver extends TCPsocket {
             DataOutputStream dos = new DataOutputStream(out);
             boolean open = true;
 
-            PriorityQueue<TCPsegment> receive = new PriorityQueue<>(sws);
+            Queue<TCPsegment> receive = new LinkedList<>();
             HashSet<Integer> sequenceNumbers = new HashSet<Integer>();
 
             if (ackSegment != null){
@@ -54,21 +56,21 @@ public class TCPreceiver extends TCPsocket {
 
                 if (currSequenceNum < this.ackNumber) { 
                     TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
-                    sendPacket(currAckSegment, remoteIP, remotePort); // retransmitt now TODO: Retransmitt here?
+                    sendPacket(currAckSegment, remoteIP, remotePort); // ack back as it is
                     TCPutil.numOutofSequence++;
                     continue;
-                } else {  // add to queue
-                    if (!sequenceNumbers.contains(currSequenceNum)) {
+                } else { 
+                    if (sequenceNumbers.contains(currSequenceNum)) {
+                        continue;
+                    } else {
                         sequenceNumbers.add(currSequenceNum);
                         receive.add(dataSegment);
-                    } else {
-                        continue;
                     }
 
                     while (!receive.isEmpty()) {
                         TCPsegment firstSegment = receive.peek(); 
                         if (firstSegment.getSequenceNum() == this.ackNumber) {
-                            if (!firstSegment.isAck() || firstSegment.getDataSize() <= 0) {  // end if no more data
+                            if (firstSegment.getDataSize() <= 0 || !firstSegment.isAck()) {  // end if packet received is FIN flaged
                                 if (firstSegment.isFin()) {
                                     dos.close();
                                     handshake("close", currTime);
