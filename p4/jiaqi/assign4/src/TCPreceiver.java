@@ -28,6 +28,7 @@ public class TCPreceiver extends TCPsocket {
             DataOutputStream dos = new DataOutputStream(out);
             boolean open = true;
 
+            // out of sequence
             PriorityQueue<TCPsegment> receive = new PriorityQueue<>(sws);
             HashSet<Integer> sequenceNumbers = new HashSet<>();
 
@@ -36,7 +37,7 @@ public class TCPreceiver extends TCPsocket {
                 sequenceNumbers.add(ackSegment.getSequenceNum());
             }
 
-            while (open) {
+            while (open) {  // receive data
                 TCPsegment dataSegment;
                 dataSegment = handlePacket(this.mtu);
 
@@ -53,7 +54,7 @@ public class TCPreceiver extends TCPsocket {
                     sendPacket(currAckSegment, remoteIP, remotePort);
                     TCPutil.numOutofSequence++;
                     continue;
-                } else {
+                } else {  // add to queue
                     if (!sequenceNumbers.contains(currSequenceNum)) {
                         sequenceNumbers.add(currSequenceNum);
                         receive.add(dataSegment);
@@ -64,20 +65,21 @@ public class TCPreceiver extends TCPsocket {
                     while (!receive.isEmpty()) {
                         TCPsegment firstSegment = receive.peek();
                         if (firstSegment.getSequenceNum() == this.ackNumber) {
-                            if (firstSegment.getDataSize() <= 0 || !firstSegment.isAck()) {  // end if fin
+                            if (!firstSegment.isAck() || firstSegment.getDataSize() <= 0) {  // end if no more data
                                 if (firstSegment.isFin()) {
                                     dos.close();
-                                    open = false;
                                     handshake("close", currTime);
                                     receive.remove(firstSegment);
                                     sequenceNumbers.remove(firstSegment.getSequenceNum());
+                                    open = false;
                                 }
-                            } else {  // send and write file to receiver host, send ACK
+                            } else {  // write file to receiver host, send ACK
                                 dos.write(firstSegment.getData());
 
                                 this.ackNumber += firstSegment.getDataSize();
                                 TCPutil.numByteReceived += firstSegment.getDataSize();
-                                TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber,this.ackNumber, currTime);
+                                TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber,
+                                        this.ackNumber, currTime);
                                 sendPacket(currAckSegment, remoteIP, remotePort);
                                 sequenceNumbers.remove(firstSegment.getSequenceNum());
                                 receive.remove(firstSegment);
@@ -107,8 +109,7 @@ public class TCPreceiver extends TCPsocket {
                 this.socket = new DatagramSocket(port);
                 this.socket.setSoTimeout(0);
 
-                // check checksum only 
-                
+                // only check checksum here according to piazza@585
                 byte[] data = new byte[mtu + 24];
                 DatagramPacket synPacket = new DatagramPacket(data, mtu + 24);
                 socket.receive(synPacket);
@@ -127,34 +128,27 @@ public class TCPreceiver extends TCPsocket {
                     System.out.println("Checksum mismatch.");
                     return null;
                 }
-
-                if (synSegment.isSyn()){
-                    if(!synSegment.isAck() && !synSegment.isFin()) {
-                        TCPutil.getReceiverStatus(synSegment);
-                        remoteIP = synPacket.getAddress();
-                        remotePort = synPacket.getPort();
-                        this.ackNumber++;
-                        TCPutil.numPacketReceived++;
-                    }
+                if (synSegment.isSyn() && !synSegment.isAck() && !synSegment.isFin()) {
+                    TCPutil.getReceiverStatus(synSegment);
+                    remoteIP = synPacket.getAddress();
+                    remotePort = synPacket.getPort();
+                    this.ackNumber++;
+                    TCPutil.numPacketReceived++;
                 }
 
                 boolean receivedAck = false;
 
-                while (!receivedAck) { // retry untill timeout
+                while (!receivedAck) {
                     try {
+                        // send SYN+ACK
                         TCPsegment handshakeSynAck = TCPsegment.getConnectionSegment(this.sequenceNumber,
                                 this.ackNumber,
                                 ConnectionState.SYN_ACK);
                         sendPacket(handshakeSynAck, remoteIP, remotePort);
                         this.sequenceNumber++;
 
-                        socket.setSoTimeout(5000);
-                        ackSegment = handlePacket(this.mtu);
-                        if (ackSegment == null) {
-                            System.out.println("Checksum mismatch.");
-                            continue;
-                        }
-                        while (ackSegment.isSyn()) {
+                        // receive ACK
+                        do {
                             socket.setSoTimeout(5000);
                             ackSegment = handlePacket(this.mtu);
                             if (ackSegment == null) {
@@ -162,7 +156,7 @@ public class TCPreceiver extends TCPsocket {
                                 continue;
                             }
 
-                        }
+                        } while (ackSegment.isSyn());
 
                         if (ackSegment.isAck() && !ackSegment.isFin() && !ackSegment.isSyn()) {
                             receivedAck = true;
@@ -206,6 +200,7 @@ public class TCPreceiver extends TCPsocket {
                             this.sequenceNumber--;
                             continue;
 
+                            // wrong flag
                         } else {
                             System.exit(1);
                         }
@@ -221,7 +216,7 @@ public class TCPreceiver extends TCPsocket {
                     }
                 }
                 return null;
-            
+
             default:
                 return null;
         }

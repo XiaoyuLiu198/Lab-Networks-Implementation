@@ -80,7 +80,7 @@ public class TCPsender extends TCPsocket {
                                     System.out.println("Reached maximum number of retransmissions.");
                                     return;
                                 }
-                                // sliding window
+                                // reset back to failed point
                                 dis.reset();
                                 dis.skip(currAckNum - (numByteWritten - numByteRead));
                                 this.sequenceNumber = currAckNum + 1;
@@ -99,7 +99,7 @@ public class TCPsender extends TCPsocket {
                             System.out.println("Reached maximum number of retransmissions.");
                             return;
                         }
-                        // sliding window
+                        // reset back to failed point
                         dis.reset();
                         dis.skip(currAckNum - (numByteWritten - numByteRead));
                         this.sequenceNumber = currAckNum + 1;
