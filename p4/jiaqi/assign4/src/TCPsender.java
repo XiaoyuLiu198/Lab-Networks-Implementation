@@ -1,11 +1,11 @@
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
+import java.net.DatagramSocket;
+import java.net.SocketTimeoutException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
 public class TCPsender extends TCPsocket {
@@ -199,12 +199,14 @@ public class TCPsender extends TCPsocket {
                             }
                         }
 
-                        if (finAckSegment.isFin() && finAckSegment.isAck() && !finAckSegment.isSyn()) {
-                            this.ackNumber++;
-                            receivedFinAck = true;
-                            TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-                                    ConnectionState.ACK);
-                            sendPacket(ackSegment, remoteIP, remotePort);
+                        if (finAckSegment.isFin()){
+                            if(finAckSegment.isAck() && !finAckSegment.isSyn()) {
+                                this.ackNumber++;
+                                receivedFinAck = true;
+                                TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
+                                        ConnectionState.ACK);
+                                sendPacket(ackSegment, remoteIP, remotePort);
+                            }
                         }
                     } catch (SocketTimeoutException e) {
                         System.out.println("Timeout for ACK.");
