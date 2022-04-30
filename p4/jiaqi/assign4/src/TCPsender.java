@@ -2,10 +2,10 @@ import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.Arrays;
 
 public class TCPsender extends TCPsocket {
@@ -99,16 +99,14 @@ public class TCPsender extends TCPsocket {
                             System.out.println("Reached maximum number of retransmissions.");
                             return;
                         }
-                        // slide back to unsuccesfully sent point
+                        // sliding window
                         dis.reset();
-                        int newStart = currAckNum - (numByteWritten - numByteRead);
-                        dis.skip(newStart);
-
+                        dis.skip(currAckNum - (numByteWritten - numByteRead));
                         this.sequenceNumber = currAckNum + 1;
                         TCPutil.numByteSent = currAckNum;
+                        TCPutil.numRetransmission++;
                         numByteWritten = TCPutil.numByteSent;
                         currRetransmit++;
-                        TCPutil.numRetransmission++;
                         break;
                     }
                     currRetransmit = 0;  // reset counter for current segment
@@ -186,27 +184,20 @@ public class TCPsender extends TCPsocket {
                     try {
                         // receive FIN+ACK
                         TCPsegment finAckSegment = null;
-                        finAckSegment = handlePacket(this.mtu);
-                        if (finAckSegment == null) {
-                            this.sequenceNumber--;
-                            continue;
-                        }
-                        while (finAckSegment.isAck() && !finAckSegment.isFin() && !finAckSegment.isSyn()) {
+                        do {
                             finAckSegment = handlePacket(this.mtu);
                             if (finAckSegment == null) {
                                 this.sequenceNumber--;
                                 continue;
                             }
-                        }
+                        } while (finAckSegment.isAck() && !finAckSegment.isFin() && !finAckSegment.isSyn());
 
-                        if (finAckSegment.isFin()){
-                            if(finAckSegment.isAck() && !finAckSegment.isSyn()) {
-                                this.ackNumber++;
-                                receivedFinAck = true;
-                                TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
-                                        ConnectionState.ACK);
-                                sendPacket(ackSegment, remoteIP, remotePort);
-                            }
+                        if (finAckSegment.isFin() && finAckSegment.isAck() && !finAckSegment.isSyn()) {
+                            this.ackNumber++;
+                            receivedFinAck = true;
+                            TCPsegment ackSegment = TCPsegment.getConnectionSegment(this.sequenceNumber, this.ackNumber,
+                                    ConnectionState.ACK);
+                            sendPacket(ackSegment, remoteIP, remotePort);
                         }
                     } catch (SocketTimeoutException e) {
                         System.out.println("Timeout for ACK.");
