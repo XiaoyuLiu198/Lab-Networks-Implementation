@@ -76,7 +76,7 @@ public class TCPsender extends TCPsocket {
                                     return; //
                                 }
                                 sendPacket(dataSegment, remoteIP, remotePort);
-                                currAckSegment = handlePacket(this.mtu); 
+                                // currAckSegment = handlePacket(this.mtu); 
                                 TCPutil.numRetransmission++;
                                 currRetransmit++;
                                 break;
