@@ -90,7 +90,7 @@ public class TCPsender extends TCPsocket {
                                     System.out.println("Reached maximum number of retransmissions.");
                                     return;
                                 }
-                                sendPacket(dataSegment, remoteIP, remotePort);
+                                // sendPacket(dataSegment, remoteIP, remotePort);
                                 TCPutil.numRetransmission++;
                                 currRetransmit++;
                                 break;
