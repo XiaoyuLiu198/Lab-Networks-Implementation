@@ -1,10 +1,10 @@
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
@@ -76,7 +76,7 @@ public class TCPsender extends TCPsocket {
                                     return; //
                                 }
                                 sendPacket(dataSegment, remoteIP, remotePort);
-                                // currAckSegment = handlePacket(this.mtu); 
+                                // currAckSegment = handlePacket(this.mtu);
                                 TCPutil.numRetransmission++;
                                 currRetransmit++;
                                 break;
@@ -121,9 +121,10 @@ public class TCPsender extends TCPsocket {
                                 System.out.println("Reached maximum number of retransmissions.");
                                 return; //
                             }
-                            // sliding window
+                            // reset back
                             dis.reset();
-                            dis.skip(currAckNum - (numByteWritten - numByteRead));
+                            int toNewStart = currAckNum - (numByteWritten - numByteRead);
+                            dis.skip(toNewStart);
                             this.sequenceNumber = currAckNum + 1;
                             TCPutil.numByteSent = currAckNum;
                             TCPutil.numRetransmission++;

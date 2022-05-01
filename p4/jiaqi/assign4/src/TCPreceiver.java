@@ -1,15 +1,15 @@
 import java.io.DataOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
+import java.io.FileOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.Queue;
+import java.util.PriorityQueue;
 
 public class TCPreceiver extends TCPsocket {
     private InetAddress remoteIP;
@@ -29,7 +29,7 @@ public class TCPreceiver extends TCPsocket {
             boolean open = true;
 
             // PriorityQueue<TCPsegment> receive = new PriorityQueue<>(sws);
-            Queue<TCPsegment> receive = new LinkedList<>();
+            PriorityQueue<TCPsegment> receive = new PriorityQueue<>();
             HashSet<Integer> sequenceNumbers = new HashSet<Integer>();
 
             if (ackSegment != null){
@@ -53,7 +53,7 @@ public class TCPreceiver extends TCPsocket {
                 long currTime = dataSegment.getTime();
                 int currSequenceNum = dataSegment.getSequenceNum();
 
-                if (currSequenceNum < this.ackNumber) { 
+                if (currSequenceNum < this.ackNumber) {
                     TCPsegment currAckSegment = TCPsegment.getAckSegment(this.sequenceNumber, this.ackNumber, currTime);
                     sendPacket(currAckSegment, remoteIP, remotePort); // retransmitt now TODO: Retransmitt here?
                     TCPutil.numOutofSequence++;
@@ -67,7 +67,7 @@ public class TCPreceiver extends TCPsocket {
                     }
 
                     while (!receive.isEmpty()) {
-                        TCPsegment firstSegment = receive.peek(); 
+                        TCPsegment firstSegment = receive.peek();
                         if (firstSegment.getSequenceNum() == this.ackNumber) {
                             if (!firstSegment.isAck() || firstSegment.getDataSize() <= 0) {  // end if no more data
                                 if (firstSegment.isFin()) {
@@ -220,10 +220,9 @@ public class TCPreceiver extends TCPsocket {
                     }
                 }
                 return null;
-            
+
             default:
                 return null;
         }
     }
 }
-
