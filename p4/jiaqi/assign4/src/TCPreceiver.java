@@ -7,10 +7,8 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
-// import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
-// import java.util.PriorityQueue;
 import java.util.Queue;
 
 public class TCPreceiver extends TCPsocket {

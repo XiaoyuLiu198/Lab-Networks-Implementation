@@ -75,15 +75,9 @@ public class TCPsender extends TCPsocket {
                                     System.out.println("Reached maximum number of retransmissions.");
                                     return; //
                                 }
-                                // sliding window
-                                // dis.reset();
-                                // dis.skip(currAckNum - (numByteWritten - numByteRead));
-                                // this.sequenceNumber = currAckNum + 1;
-                                // TCPutil.numByteSent = currAckNum;
                                 sendPacket(dataSegment, remoteIP, remotePort);
                                 currAckSegment = handlePacket(this.mtu); 
                                 TCPutil.numRetransmission++;
-                                // numByteWritten = TCPutil.numByteSent;
                                 currRetransmit++;
                                 break;
                             }
@@ -96,15 +90,8 @@ public class TCPsender extends TCPsocket {
                                     System.out.println("Reached maximum number of retransmissions.");
                                     return;
                                 }
-                                // sliding window
-                                // dis.reset();
-                                // dis.skip(currAckNum - (numByteWritten - numByteRead));
-                                // this.sequenceNumber = currAckNum + 1;
-                                // TCPutil.numByteSent = currAckNum;
                                 sendPacket(dataSegment, remoteIP, remotePort);
-                                // currAckSegment = handlePacket(this.mtu); 
                                 TCPutil.numRetransmission++;
-                                // numByteWritten = TCPutil.numByteSent;
                                 currRetransmit++;
                                 break;
                             }
