@@ -1,14 +1,14 @@
 import java.io.DataOutputStream;
-import java.net.DatagramSocket;
-import java.net.DatagramPacket;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.SocketTimeoutException;
 import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.InetAddress;
-
+import java.net.SocketTimeoutException;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.PriorityQueue;
 
 public class TCPreceiver extends TCPsocket {
@@ -28,7 +28,7 @@ public class TCPreceiver extends TCPsocket {
             DataOutputStream dos = new DataOutputStream(out);
             boolean open = true;
 
-            // out of sequence
+
             PriorityQueue<TCPsegment> receive = new PriorityQueue<>(sws);
             HashSet<Integer> sequenceNumbers = new HashSet<>();
 
@@ -107,7 +107,7 @@ public class TCPreceiver extends TCPsocket {
                 TCPsegment ackSegment = null;
 
                 this.socket = new DatagramSocket(port);
-                this.socket.setSoTimeout(0);
+                this.socket.setSoTimeout(5000);
 
                 // only check checksum here according to piazza@585
                 byte[] data = new byte[mtu + 24];

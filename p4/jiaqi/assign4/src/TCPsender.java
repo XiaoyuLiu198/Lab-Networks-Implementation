@@ -3,6 +3,8 @@ import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -55,12 +57,6 @@ public class TCPsender extends TCPsocket {
 
                     TCPsegment dataSegment = TCPsegment.getDataSegment(this.sequenceNumber, this.ackNumber, chunk);
                     sendPacket(dataSegment, remoteIP, remotePort);
-
-                    this.sequenceNumber += chunkSize;
-                    TCPutil.numByteSent += chunkSize;
-                }
-
-                while (currAckNum < TCPutil.numByteSent) {
                     try {
                         TCPsegment currAckSegment = handlePacket(this.mtu);
                         if (currAckSegment == null) {
@@ -71,45 +67,91 @@ public class TCPsender extends TCPsocket {
 
                         int prevAck = currAckNum;
                         currAckNum = currAckSegment.getAckNum() - 1;
-
                         if (prevAck == currAckNum) {  // fast retransmit
                             currDuplicateAck++;
                             TCPutil.numDuplicateAck++;
                             if (currDuplicateAck == 3) {
                                 if (currRetransmit > 16) {
                                     System.out.println("Reached maximum number of retransmissions.");
-                                    return;
+                                    return; //
                                 }
-                                // reset back to failed point
-                                dis.reset();
-                                dis.skip(currAckNum - (numByteWritten - numByteRead));
-                                this.sequenceNumber = currAckNum + 1;
-                                TCPutil.numByteSent = currAckNum;
+                                sendPacket(dataSegment, remoteIP, remotePort);
+                                // currAckSegment = handlePacket(this.mtu);
                                 TCPutil.numRetransmission++;
-                                numByteWritten = TCPutil.numByteSent;
                                 currRetransmit++;
                                 break;
                             }
                         } else {
                             currDuplicateAck = 0;
                         }
-                    } catch (SocketTimeoutException e) {
-                        System.out.println("Timeout for SYN+ACK.");
-                        if (currRetransmit > 16) {
-                            System.out.println("Reached maximum number of retransmissions.");
-                            return;
-                        }
-                        // reset back to failed point
-                        dis.reset();
-                        dis.skip(currAckNum - (numByteWritten - numByteRead));
-                        this.sequenceNumber = currAckNum + 1;
-                        TCPutil.numByteSent = currAckNum;
-                        TCPutil.numRetransmission++;
-                        numByteWritten = TCPutil.numByteSent;
-                        currRetransmit++;
-                        break;
+                            } catch (SocketTimeoutException e) {
+                                System.out.println("Timeout for SYN+ACK.");
+                                if (currRetransmit > 16) {
+                                    System.out.println("Reached maximum number of retransmissions.");
+                                    return;
+                                }
+                                // sendPacket(dataSegment, remoteIP, remotePort);
+                                TCPutil.numRetransmission++;
+                                currRetransmit++;
+                                break;
+                            }
+                currRetransmit = 0;  // reset counter for current segment
+                TCPutil.numByteSent += chunkSize; // update overall stats
+                this.sequenceNumber += chunkSize;
+            }
+
+            while (currAckNum != TCPutil.numByteSent) {
+                try {
+                    TCPsegment currAckSegment = handlePacket(this.mtu); // get tcp response after sending attempt
+                    if (currAckSegment == null) {
+                        continue;
                     }
-                    currRetransmit = 0;  // reset counter for current segment
+
+                    this.socket.setSoTimeout((int) (TCPutil.timeout / 1E6)); // TODO: unit correct? before checking dup?
+
+                    // duplicate ack
+                    int prevAck = currAckNum;
+                    currAckNum = currAckSegment.getAckNum() - 1;
+
+                    if (prevAck == currAckNum) {  // fast retransmit
+                        currDuplicateAck++;
+                        TCPutil.numDuplicateAck++;
+                        if (currDuplicateAck == 3) {
+                            if (currRetransmit > 16) {
+                                System.out.println("Reached maximum number of retransmissions.");
+                                return; //
+                            }
+                            // reset back
+                            dis.reset();
+                            int toNewStart = currAckNum - (numByteWritten - numByteRead);
+                            dis.skip(toNewStart);
+                            this.sequenceNumber = currAckNum + 1;
+                            TCPutil.numByteSent = currAckNum;
+                            TCPutil.numRetransmission++;
+                            numByteWritten = TCPutil.numByteSent;
+                            currRetransmit++;
+                            break;
+                        }
+                    } else {
+                        currDuplicateAck = 0;
+                    }
+                } catch (SocketTimeoutException e) {
+                    System.out.println("Timeout for SYN+ACK.");
+                    if (currRetransmit > 16) {
+                        System.out.println("Reached maximum number of retransmissions.");
+                        return;
+                    }
+                    // sliding window
+                    dis.reset();
+                    dis.skip(currAckNum - (numByteWritten - numByteRead));
+                    this.sequenceNumber = currAckNum + 1;
+                    TCPutil.numByteSent = currAckNum;
+                    TCPutil.numRetransmission++;
+                    numByteWritten = TCPutil.numByteSent;
+                    currRetransmit++;
+                    break;
+                }
+                currRetransmit = 0;  // reset counter for current segment
                 }
                 bis.mark(mtu * sws);
             }
