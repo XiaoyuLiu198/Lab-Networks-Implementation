@@ -1,6 +1,6 @@
 # Implement Transmission Control Protocol (TCP)
 
-Course assignment of implementing a Transmission Control Protocol based on UDP sockets. Lease do not use this code for any purpose. The simplified version of protocol requires:
+Course assignment of implementing a Transmission Control Protocol based on UDP sockets. Please do not use this code for any purpose. The simplified version of protocol requires:
 
 ### Proper message format
 
