@@ -12,3 +12,14 @@ Course assignment of implementing a Transmission Control Protocol based on UDP s
 #### Timeout Computation
 Sender will always update the timestamp field in packet with current time. Receiver acked will copy the timestamp . After sender received the ACK it will compute the round trip time and we are calculating the timeout based on it.
 
+### Testing
+```
+java TCPend -p <port> -s <remote IP> -a <remote port> –f <file name> -m <mtu> -c <sws>
+```
+remote receiver
+```
+java TCPend -p <port> -m <mtu> -c <sws> -f <file name>
+```
+
+### Output
+<img width="239" alt="Screen Shot 2022-11-26 at 6 34 00 PM" src="https://user-images.githubusercontent.com/65391883/204114097-3179f8f7-f706-4f6c-8945-acccc65f4743.png">
