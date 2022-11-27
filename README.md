@@ -8,7 +8,7 @@ Course assignment of implementing a Transmission Control Protocol based on UDP s
 
 ### Transmission details
 
-#### Requirements of maximum number of retransmissions, Maximum Transmission Unit (MTU) of IP packet.
+Requirements of maximum number of retransmissions, Maximum Transmission Unit (MTU) of IP packet.
 #### Timeout Computation
 Sender will always update the timestamp field in packet with current time. Receiver acked will copy the timestamp . After sender received the ACK it will compute the round trip time and we are calculating the timeout based on it.
 
