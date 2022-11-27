@@ -25,6 +25,3 @@ remote receiver
 ```
 java TCPend -p <port> -m <mtu> -c <sws> -f <file name>
 ```
-
-### Output
-<img width="239" alt="Screen Shot 2022-11-26 at 6 34 00 PM" src="https://user-images.githubusercontent.com/65391883/204114097-3179f8f7-f706-4f6c-8945-acccc65f4743.png">
